@@ -1,6 +1,11 @@
 "use server";
 
+import crypto from "node:crypto";
+import path from "node:path";
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { cookieOptions, createSessionToken, hashPin, invalidateAuthCache, isValidPin, SESSION_COOKIE, verifyPin } from "@/lib/auth";
+import { createBackupFile } from "@/lib/backup";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import { deleteUpload, saveLogo } from "@/lib/storage";
@@ -82,5 +87,73 @@ export async function saveTechnician(id: string | null, _prev: ActionState, fd: 
     else await prisma.technician.create({ data });
   });
   if (!res?.error) revalidatePath("/configuracion");
+  return res;
+}
+
+// ── Acceso con PIN ──────────────────────────────────────────────────────────
+
+/** Pone o cambia el PIN. Cierra las sesiones de los demás dispositivos y mantiene abierta la de este. */
+export async function setPin(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const res = await handle(async () => {
+    const s = await prisma.settings.findUniqueOrThrow({ where: { id: 1 } });
+    if (s.pinHash && !verifyPin(String(fd.get("currentPin") ?? ""), s.pinHash)) throw new FormError("El PIN actual no es correcto.");
+    const pin = String(fd.get("newPin") ?? "");
+    if (!isValidPin(pin)) throw new FormError("El PIN debe tener entre 4 y 8 cifras.");
+    if (pin !== String(fd.get("confirmPin") ?? "")) throw new FormError("Los dos PIN nuevos no coinciden.");
+    if (/^(\d)\1+$/.test(pin) || "0123456789".includes(pin) || "9876543210".includes(pin)) throw new FormError("Elija un PIN menos previsible (no 1111 ni 1234).");
+    const hours = inRange(int(fd, "sessionHours"), 1, 168, "Duración de la sesión") ?? s.sessionHours;
+
+    const updated = await prisma.settings.update({
+      where: { id: 1 },
+      data: {
+        pinHash: hashPin(pin),
+        sessionSecret: s.sessionSecret ?? crypto.randomBytes(32).toString("base64url"),
+        sessionVersion: { increment: 1 },
+        sessionHours: hours,
+      },
+    });
+    invalidateAuthCache();
+    const { token, maxAge } = createSessionToken({ secret: updated.sessionSecret!, version: updated.sessionVersion, hours: updated.sessionHours });
+    (await cookies()).set(SESSION_COOKIE, token, cookieOptions(maxAge));
+    await audit("UPDATE", "Settings", "1", s.pinHash ? "PIN cambiado" : "PIN activado");
+  });
+  if (!res?.error) revalidatePath("/", "layout");
+  return res;
+}
+
+export async function removePin(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const res = await handle(async () => {
+    const s = await prisma.settings.findUniqueOrThrow({ where: { id: 1 } });
+    if (!s.pinHash) return;
+    if (!verifyPin(String(fd.get("currentPin") ?? ""), s.pinHash)) throw new FormError("El PIN actual no es correcto.");
+    await prisma.settings.update({ where: { id: 1 }, data: { pinHash: null, sessionVersion: { increment: 1 } } });
+    invalidateAuthCache();
+    (await cookies()).delete(SESSION_COOKIE);
+    await audit("UPDATE", "Settings", "1", "PIN desactivado");
+  });
+  if (!res?.error) revalidatePath("/", "layout");
+  return res;
+}
+
+// ── Copias de seguridad ─────────────────────────────────────────────────────
+
+export async function saveBackupOptions(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const res = await handle(async () => {
+    await prisma.settings.update({
+      where: { id: 1 },
+      data: { autoBackup: bool(fd, "autoBackup"), autoBackupKeep: inRange(int(fd, "autoBackupKeep"), 1, 365, "Copias a conservar") },
+    });
+  });
+  if (!res?.error) revalidatePath("/configuracion");
+  return res;
+}
+
+export async function backupNow(_prev: ActionState, _fd: FormData): Promise<ActionState> {
+  const res = await handle(async () => {
+    const { file, size } = await createBackupFile("manual");
+    await prisma.backupRecord.create({ data: { fileName: path.basename(file), sizeBytes: size } });
+    await audit("BACKUP", "Database", undefined, path.basename(file));
+  });
+  revalidatePath("/configuracion");
   return res;
 }

@@ -1,6 +1,5 @@
-import { BellRing, Building2, DatabaseBackup, HardDriveDownload, ImageIcon, Info, Plus, Receipt, Save, Trash2, Users } from "lucide-react";
+import { BellRing, Building2, DatabaseBackup, FolderDown, HardDriveDownload, ImageIcon, Info, KeyRound, Lock, Plus, Receipt, Save, ShieldAlert, Trash2, Users } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { formatDate } from "@/lib/dates";
 import { toEurosInput } from "@/lib/forms";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -9,16 +8,20 @@ import { FormSection, MoneyField, NumberField, TextAreaField, TextField } from "
 import { InlineForm } from "@/components/ui/InlineForm";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { LogoForm } from "@/components/settings/LogoForm";
-import { removeLogo, saveSettings, saveTechnician, uploadLogo } from "./actions";
+import { RestorePanel } from "@/components/settings/RestorePanel";
+import { BACKUP_DIR, listBackups } from "@/lib/backup";
+import { lock } from "../acceso/actions";
+import { backupNow, removeLogo, removePin, saveBackupOptions, saveSettings, setPin, saveTechnician, uploadLogo } from "./actions";
 
 export const metadata = { title: "Ajustes" };
 
 export default async function SettingsPage() {
-  const [settings, backups, technicians] = await Promise.all([
+  const [settings, stored, technicians] = await Promise.all([
     prisma.settings.findUnique({ where: { id: 1 } }),
-    prisma.backupRecord.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
+    listBackups(),
     prisma.technician.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }], include: { _count: { select: { workOrders: true } } } }),
   ]);
+  const hasPin = !!settings?.pinHash;
   const logoUrl = settings?.logoPath ? `/api/logo?v=${settings.updatedAt.getTime()}` : null;
 
   return (
@@ -63,6 +66,56 @@ export default async function SettingsPage() {
           </ActionForm>
 
           <Card>
+            <CardHeader title="Copias de seguridad" icon={DatabaseBackup} subtitle="Base de datos + fotos y documentos en un solo .zip" />
+            <div className="space-y-5 px-5 py-5">
+              <div className="grid gap-4 md:grid-cols-2 md:items-start">
+              <a
+                href="/api/backup"
+                className="flex min-h-14 items-center justify-center gap-3 rounded-xl bg-teal-600 px-5 text-lg font-medium text-white shadow-sm transition hover:bg-teal-700 active:scale-[0.98]"
+              >
+                <HardDriveDownload className="size-6" />
+                Descargar copia completa
+              </a>
+              <p className="flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+                <Info className="mt-0.5 size-4 shrink-0" />
+                <span>Guárdela en un pendrive o disco externo cifrado y custodiado: contiene datos de salud (RGPD art. 9).</span>
+              </p>
+
+              <InlineForm action={backupNow}>
+                <SubmitButton icon={<FolderDown className="size-5" />} variant="secondary" className="w-full">Guardar copia ahora en el equipo</SubmitButton>
+              </InlineForm>
+
+              <InlineForm action={saveBackupOptions} className="space-y-3 rounded-xl border border-slate-200 p-4">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input type="checkbox" name="autoBackup" defaultChecked={settings?.autoBackup ?? true} className="mt-0.5 size-6 shrink-0 accent-teal-600" />
+                  <span>
+                    <span className="font-medium text-slate-700">Copia automática diaria</span>
+                    <span className="block text-sm text-slate-500">Última: {settings?.lastAutoBackupAt ? settings.lastAutoBackupAt.toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" }) : "nunca"}</span>
+                  </span>
+                </label>
+                <div className="flex items-end gap-3">
+                  <div className="flex-1">
+                    <label className="field-label" htmlFor="autoBackupKeep">Conservar las últimas</label>
+                    <input id="autoBackupKeep" name="autoBackupKeep" inputMode="numeric" defaultValue={settings?.autoBackupKeep ?? 14} className="field" />
+                  </div>
+                  <SubmitButton icon={<Save className="size-5" />} variant="secondary">Guardar</SubmitButton>
+                </div>
+                <p className="break-all text-xs text-slate-500">Carpeta: <code>{BACKUP_DIR}</code> (variable BACKUP_DIR para usar un disco externo o NAS)</p>
+              </InlineForm>
+
+              </div>
+              <RestorePanel
+                stored={stored.map((b) => ({
+                  name: b.name,
+                  size: b.size,
+                  createdAt: b.createdAt.toISOString(),
+                  label: { auto: "Automática", manual: "Manual", "antes-de-restaurar": "Antes de restaurar", otra: "Copia" }[b.kind],
+                }))}
+              />
+            </div>
+          </Card>
+
+          <Card>
             <CardHeader title="Técnicos" icon={Users} subtitle="Los técnicos con órdenes no se borran: se desactivan" />
             <ul className="divide-y divide-slate-100">
               {technicians.map((t) => (
@@ -102,30 +155,51 @@ export default async function SettingsPage() {
 
         <div className="space-y-6">
           <Card>
-            <CardHeader title="Copia de seguridad" icon={DatabaseBackup} subtitle="Pacientes, taller y trazabilidad" />
-            <div className="space-y-4 px-5 py-5">
-              <a
-                href="/api/backup"
-                className="flex min-h-14 items-center justify-center gap-3 rounded-xl bg-teal-600 px-5 text-lg font-medium text-white shadow-sm transition hover:bg-teal-700 active:scale-[0.98]"
-              >
-                <HardDriveDownload className="size-6" />
-                Descargar copia (.db)
-              </a>
-              <p className="flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-                <Info className="mt-0.5 size-4 shrink-0" />
-                <span>
-                  Guárdela en un pendrive o disco externo cifrado y custodiado: contiene datos de salud (RGPD art. 9). Los adjuntos de la carpeta
-                  <code className="mx-1">uploads/</code>se copian aparte.
-                </span>
-              </p>
-              {backups.length > 0 && (
-                <ul className="space-y-1 text-sm text-slate-500">
-                  {backups.map((b) => (
-                    <li key={b.id}>
-                      {formatDate(b.createdAt)} · {(b.sizeBytes / 1024).toFixed(0)} KB
-                    </li>
-                  ))}
-                </ul>
+            <CardHeader title="Acceso con PIN" icon={KeyRound} subtitle={hasPin ? `Activado · se pide cada ${settings?.sessionHours} h` : undefined} />
+            <div className="space-y-4 p-5">
+              {!hasPin && (
+                <p className="flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+                  <ShieldAlert className="mt-0.5 size-4 shrink-0" />
+                  Sin PIN, cualquier dispositivo conectado a la Wi-Fi de la tienda puede abrir las fichas de los pacientes. Se recomienda activarlo.
+                </p>
+              )}
+              <InlineForm action={setPin} className="space-y-3">
+                {hasPin && (
+                  <div>
+                    <label className="field-label" htmlFor="currentPin">PIN actual</label>
+                    <input id="currentPin" name="currentPin" type="password" inputMode="numeric" autoComplete="off" required className="field" />
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="field-label" htmlFor="newPin">{hasPin ? "PIN nuevo" : "PIN (4-8 cifras)"}</label>
+                    <input id="newPin" name="newPin" type="password" inputMode="numeric" autoComplete="new-password" required minLength={4} maxLength={8} pattern="\d{4,8}" className="field" />
+                  </div>
+                  <div>
+                    <label className="field-label" htmlFor="confirmPin">Repetir PIN</label>
+                    <input id="confirmPin" name="confirmPin" type="password" inputMode="numeric" autoComplete="new-password" required minLength={4} maxLength={8} pattern="\d{4,8}" className="field" />
+                  </div>
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="sessionHours">Volver a pedir el PIN tras (horas)</label>
+                  <input id="sessionHours" name="sessionHours" inputMode="numeric" defaultValue={settings?.sessionHours ?? 12} className="field" />
+                </div>
+                <SubmitButton icon={<KeyRound className="size-5" />} className="w-full">{hasPin ? "Cambiar PIN" : "Activar PIN"}</SubmitButton>
+                {hasPin && <p className="text-xs text-slate-500">Al cambiarlo se cierra la sesión en los demás dispositivos.</p>}
+              </InlineForm>
+              {hasPin && (
+                <>
+                  <form action={lock}>
+                    <SubmitButton icon={<Lock className="size-5" />} variant="secondary" className="w-full">Bloquear este dispositivo</SubmitButton>
+                  </form>
+                  <details className="rounded-xl border border-slate-200 p-3 text-sm">
+                    <summary className="cursor-pointer font-medium text-slate-600">Desactivar el PIN</summary>
+                    <InlineForm action={removePin} className="mt-3 space-y-3">
+                      <input name="currentPin" type="password" inputMode="numeric" placeholder="PIN actual" aria-label="PIN actual" required className="field" />
+                      <SubmitButton icon={<ShieldAlert className="size-5" />} variant="danger" className="w-full">Desactivar PIN</SubmitButton>
+                    </InlineForm>
+                  </details>
+                </>
               )}
             </div>
           </Card>

@@ -228,7 +228,7 @@ enum AuditAction {
 // ----------------------------------------------------------------------------
 
 model Settings {
-  id                     Int      @id @default(1)
+  id                     Int       @id @default(1)
   businessName           String
   legalName              String?
   taxId                  String? // CIF / NIF
@@ -241,14 +241,23 @@ model Settings {
   email                  String?
   website                String?
   logoPath               String?
-  defaultHourlyRateCents Int      @default(3500)
-  defaultTaxRate         Float    @default(21) // IVA %
-  quoteValidityDays      Int      @default(30)
+  defaultHourlyRateCents Int       @default(3500)
+  defaultTaxRate         Float     @default(21) // IVA %
+  quoteValidityDays      Int       @default(30)
   quoteLegalFooter       String? // Pie legal de presupuestos (RGPD, condiciones…)
-  insoleRenewalMonths    Int      @default(12)
-  stockingRenewalMonths  Int      @default(6)
-  renewalWarningDays     Int      @default(30) // Avisar X días antes de vencer
-  updatedAt              DateTime @updatedAt
+  insoleRenewalMonths    Int       @default(12)
+  stockingRenewalMonths  Int       @default(6)
+  renewalWarningDays     Int       @default(30) // Avisar X días antes de vencer
+  // Acceso con PIN (opcional). Sin PIN, la app queda abierta a toda la red local.
+  pinHash                String? // scrypt$sal$hash
+  sessionSecret          String? // Firma de las cookies de sesión
+  sessionHours           Int       @default(12) // Horas hasta pedir de nuevo el PIN
+  sessionVersion         Int       @default(0) // Al cambiar el PIN se cierran todas las sesiones
+  // Copias automáticas
+  autoBackup             Boolean   @default(true)
+  autoBackupKeep         Int       @default(14) // Nº de copias diarias que se conservan
+  lastAutoBackupAt       DateTime?
+  updatedAt              DateTime  @updatedAt
 }
 
 // ----------------------------------------------------------------------------

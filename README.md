@@ -5,6 +5,8 @@ taller de reparaciones con desglose de costes, trazabilidad por número de serie
 Funciona en el PC de la tienda y se usa desde tablets y móviles conectados a la misma Wi-Fi.
 Ningún dato sale del equipo (sin servicios en la nube, sin telemetría).
 
+**Requisitos:** Node.js 22.13 o superior (LTS recomendado).
+
 **Stack:** Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Prisma 6 · SQLite · lucide-react
 
 ![Panel](docs/capturas/panel-escritorio.png)
@@ -104,6 +106,16 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
 - **Ajustes editables:** datos fiscales, tarifa por hora, IVA, validez y pie legal de presupuestos, plazos de
   renovación, logo (barra lateral y PDF) y técnicos (alta, tarifa propia, activar/desactivar).
 
+- **Copias de seguridad completas:** un único `.zip` con la base de datos (instantánea consistente) y todas
+  las fotos y documentos. Descarga directa, copia manual en el equipo y **copia automática diaria**
+  (se conservan las últimas N) en `backups/` o en la carpeta indicada en `BACKUP_DIR` (disco externo, NAS).
+- **Restauración** desde Ajustes (archivo .zip o copia guardada), escribiendo RESTAURAR para confirmar.
+  Antes de tocar nada guarda el estado actual (`jardon-antes-de-restaurar-*.zip`); los datos se vuelcan en
+  una sola transacción (o se restaura todo o nada) y una copia de una versión anterior se actualiza sola.
+- **Acceso con PIN** (4-8 cifras, guardado cifrado): teclado numérico grande, sesión que caduca tras las horas
+  configuradas, bloqueo tras 5 intentos fallidos por dispositivo, botón «Bloquear» y cierre de sesión en todos
+  los dispositivos al cambiar el PIN. Protege páginas, acciones, PDF, fotos y copias.
+
 ![Presupuesto](docs/capturas/presupuesto-pdf.png)
 
 ## Actualizar una instalación existente
@@ -119,5 +131,5 @@ npm run build && npm start
 
 ## Próxima fase
 
-Copia de seguridad que incluya los adjuntos y restauración, PIN de acceso, derechos RGPD
-(exportar / borrar los datos de un paciente) y arranque automático al encender el ordenador.
+Derechos RGPD (exportar / borrar todos los datos de un paciente) y arranque automático al encender
+el ordenador de la tienda.

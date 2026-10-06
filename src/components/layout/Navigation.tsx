@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Footprints, ShieldCheck } from "lucide-react";
+import { Footprints, Lock, ShieldCheck } from "lucide-react";
+import { lock } from "@/app/acceso/actions";
 import { NAV } from "./nav";
 
 function isActive(pathname: string, href: string) {
@@ -10,8 +11,9 @@ function isActive(pathname: string, href: string) {
 }
 
 /** Barra lateral (escritorio/tablet horizontal) */
-export function Sidebar({ businessName, logoUrl }: { businessName: string; logoUrl: string | null }) {
+export function Sidebar({ businessName, logoUrl, hasPin }: { businessName: string; logoUrl: string | null; hasPin: boolean }) {
   const pathname = usePathname();
+  if (pathname === "/acceso") return null;
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">
       <div className="flex items-center gap-3 px-6 py-6">
@@ -45,6 +47,14 @@ export function Sidebar({ businessName, logoUrl }: { businessName: string; logoU
           );
         })}
       </nav>
+      {hasPin && (
+        <form action={lock} className="mx-3">
+          <button type="submit" className="flex min-h-12 w-full items-center gap-3 rounded-xl px-4 font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900">
+            <Lock className="size-5" />
+            Bloquear
+          </button>
+        </form>
+      )}
       <div className="m-3 flex items-center gap-2 rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-500">
         <ShieldCheck className="size-4 text-teal-600" />
         Datos almacenados solo en este equipo
@@ -56,6 +66,7 @@ export function Sidebar({ businessName, logoUrl }: { businessName: string; logoU
 /** Barra inferior (móvil / tablet vertical) */
 export function BottomNav() {
   const pathname = usePathname();
+  if (pathname === "/acceso") return null;
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
       {NAV.map(({ href, label, icon: Icon }) => {

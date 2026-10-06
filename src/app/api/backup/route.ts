@@ -1,44 +1,33 @@
-import fs from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
+import { PassThrough, Readable } from "node:stream";
 import { prisma } from "@/lib/prisma";
+import { audit } from "@/lib/audit";
+import { writeBackupZip } from "@/lib/backup";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-/**
- * Descarga una copia consistente de la base de datos.
- * Se usa `VACUUM INTO` (instantánea atómica de SQLite) en lugar de copiar dev.db
- * en caliente, para no obtener un archivo corrupto si hay escrituras en curso.
- */
-export async function GET(req: Request) {
-  const stamp = new Date().toISOString().slice(0, 16).replace(/[T:]/g, "-");
-  const fileName = `jardon-ortopedia-backup-${stamp}.db`;
-  const tmp = path.join(await fs.mkdtemp(path.join(os.tmpdir(), "orto-")), fileName);
+/** Descarga directa de la copia completa (.zip): base de datos + fotos y documentos. */
+export async function GET() {
+  const fileName = `jardon-copia-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, "-")}.zip`;
+  const pass = new PassThrough();
+  let size = 0;
+  pass.on("data", (c: Buffer) => (size += c.length));
 
-  try {
-    await prisma.$executeRawUnsafe(`VACUUM INTO '${tmp.replace(/'/g, "''")}'`);
-    const data = await fs.readFile(tmp);
-
-    await prisma.backupRecord.create({ data: { fileName, sizeBytes: data.length } });
-    await prisma.auditLog.create({
-      data: {
-        action: "BACKUP",
-        entity: "Database",
-        summary: fileName,
-        ip: req.headers.get("x-forwarded-for") ?? undefined,
-        userAgent: req.headers.get("user-agent") ?? undefined,
-      },
+  writeBackupZip(pass)
+    .then(async () => {
+      await prisma.backupRecord.create({ data: { fileName, sizeBytes: size } });
+      await audit("BACKUP", "Database", undefined, fileName);
+    })
+    .catch((e) => {
+      console.error("[copia]", e);
+      pass.destroy(e);
     });
 
-    return new Response(data, {
-      headers: {
-        "Content-Type": "application/vnd.sqlite3",
-        "Content-Disposition": `attachment; filename="${fileName}"`,
-        "Cache-Control": "no-store",
-      },
-    });
-  } finally {
-    await fs.rm(path.dirname(tmp), { recursive: true, force: true });
-  }
+  return new Response(Readable.toWeb(pass) as ReadableStream, {
+    headers: {
+      "Content-Type": "application/zip",
+      "Content-Disposition": `attachment; filename="${fileName}"`,
+      "Cache-Control": "no-store",
+    },
+  });
 }
