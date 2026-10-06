@@ -98,10 +98,26 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
   con datos de la ortopedia, cliente, equipo, desglose, IVA, validez, firma y pie legal en cada página.
   Estados: borrador → entregado → aceptado (la orden pasa a «En reparación») o rechazado; caducan solos.
 
+- **Avisos de renovación en el panel:** botón para llamar (en el móvil marca directamente), «Llamado»
+  (queda con la fecha), «Renovar» (abre la nueva prescripción), «En 30 días» (oculta el aviso un mes sin
+  cambiar la fecha real) y «No renueva». Un aviso descartado se reactiva desde la ficha del paciente.
+- **Ajustes editables:** datos fiscales, tarifa por hora, IVA, validez y pie legal de presupuestos, plazos de
+  renovación, logo (barra lateral y PDF) y técnicos (alta, tarifa propia, activar/desactivar).
+
 ![Presupuesto](docs/capturas/presupuesto-pdf.png)
+
+## Actualizar una instalación existente
+
+```bash
+git pull
+npm install
+npx prisma migrate deploy   # aplica los cambios de la base de datos SIN borrar datos
+npm run build && npm start
+```
+
+> ⚠️ `npm run db:seed` y `npm run setup` borran todos los datos: úselos solo en pruebas.
 
 ## Próxima fase
 
-Gestión de avisos desde el panel (llamado / renovado / no renueva), ajustes editables (datos fiscales,
-logo en el PDF, técnicos), copia de seguridad que incluya los adjuntos y restauración, PIN de acceso,
-y derechos RGPD (exportar / borrar los datos de un paciente).
+Copia de seguridad que incluya los adjuntos y restauración, PIN de acceso, derechos RGPD
+(exportar / borrar los datos de un paciente) y arranque automático al encender el ordenador.

@@ -205,3 +205,10 @@ export const side: Record<import("@prisma/client").Side, string> = {
   LEFT: "Izquierdo",
   RIGHT: "Derecho",
 };
+
+export const renewalStatus: Record<import("@prisma/client").RenewalStatus, { label: string; tone: Tone }> = {
+  PENDING: { label: "Aviso pendiente", tone: "slate" },
+  CONTACTED: { label: "Paciente llamado", tone: "sky" },
+  RENEWED: { label: "Renovada", tone: "emerald" },
+  DISMISSED: { label: "No renueva", tone: "slate" },
+};

@@ -2,7 +2,7 @@
 
 import { createContext, startTransition, useActionState, useContext, type FormEvent, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
-import { AlertCircle, Loader2, Save } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, Save } from "lucide-react";
 import type { ActionState } from "@/lib/forms";
 
 type Action = (state: ActionState, fd: FormData) => Promise<ActionState>;
@@ -15,6 +15,7 @@ export function ActionForm({
   submitIcon = <Save className="size-5" />,
   cancelHref,
   className = "",
+  successMessage = "Cambios guardados.",
 }: {
   action: Action;
   children: ReactNode;
@@ -22,6 +23,8 @@ export function ActionForm({
   submitIcon?: ReactNode;
   cancelHref?: string;
   className?: string;
+  /** Se muestra cuando la acción termina sin redirigir */
+  successMessage?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
   return (
@@ -30,6 +33,12 @@ export function ActionForm({
       {children}
       {state?.error && <ErrorBanner message={state.error} />}
       <div className="sticky bottom-[4.5rem] z-30 flex gap-2 rounded-xl border border-slate-200 bg-white/95 p-2 shadow-sm backdrop-blur sm:justify-end sm:p-3 lg:bottom-4">
+        {state?.ok && (
+          <p role="status" className="mr-auto flex items-center gap-2 px-2 text-sm font-medium text-emerald-700">
+            <CheckCircle2 className="size-5" />
+            {successMessage}
+          </p>
+        )}
         {cancelHref && (
           <a href={cancelHref} className="inline-flex min-h-12 items-center justify-center rounded-xl px-5 font-medium text-slate-600 hover:bg-slate-100">
             Cancelar

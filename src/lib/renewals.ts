@@ -13,6 +13,8 @@ export interface RenewalAlert {
   detail: string;
   deliveredAt: Date | null;
   nextReviewAt: Date;
+  renewalStatus: "PENDING" | "CONTACTED";
+  renewalUpdatedAt: Date | null;
   /** Negativo = vencido hace N días */
   daysLeft: number;
   severity: "overdue" | "soon";
@@ -31,6 +33,7 @@ export async function getRenewalAlerts(now = new Date()): Promise<RenewalAlert[]
     status: "DELIVERED" as const,
     renewalStatus: { in: ["PENDING" as const, "CONTACTED" as const] },
     nextReviewAt: { lte: horizon },
+    OR: [{ renewalSnoozedUntil: null }, { renewalSnoozedUntil: { lte: now } }],
     patient: { archivedAt: null },
   };
   const patientSelect = { select: { id: true, firstName: true, lastName: true, phone: true } };
@@ -42,7 +45,7 @@ export async function getRenewalAlerts(now = new Date()): Promise<RenewalAlert[]
 
   const toAlert = (
     kind: RenewalKind,
-    r: { id: string; deliveredAt: Date | null; nextReviewAt: Date | null; patient: { id: string; firstName: string; lastName: string; phone: string | null } },
+    r: { id: string; deliveredAt: Date | null; nextReviewAt: Date | null; renewalStatus: string; renewalUpdatedAt: Date | null; patient: { id: string; firstName: string; lastName: string; phone: string | null } },
     detail: string,
   ): RenewalAlert => {
     const daysLeft = daysBetween(now, r.nextReviewAt!);
@@ -55,6 +58,8 @@ export async function getRenewalAlerts(now = new Date()): Promise<RenewalAlert[]
       detail,
       deliveredAt: r.deliveredAt,
       nextReviewAt: r.nextReviewAt!,
+      renewalStatus: r.renewalStatus as "PENDING" | "CONTACTED",
+      renewalUpdatedAt: r.renewalUpdatedAt,
       daysLeft,
       severity: daysLeft < 0 ? "overdue" : "soon",
     };
@@ -63,5 +68,7 @@ export async function getRenewalAlerts(now = new Date()): Promise<RenewalAlert[]
   return [
     ...insoles.map((r) => toAlert("INSOLE", r, `Plantillas ${insoleMaterial[r.material]}${r.shoreDensity ? ` ${r.shoreDensity}º` : ""}`)),
     ...stockings.map((r) => toAlert("STOCKING", r, `Medias ${r.compressionClass}`)),
-  ].sort((a, b) => a.daysLeft - b.daysLeft);
+  ]
+    // Primero los pendientes de llamar, después los ya llamados; dentro, los más urgentes antes
+    .sort((a, b) => Number(a.renewalStatus === "CONTACTED") - Number(b.renewalStatus === "CONTACTED") || a.daysLeft - b.daysLeft);
 }

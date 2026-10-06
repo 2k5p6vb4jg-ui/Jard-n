@@ -78,6 +78,24 @@ export async function savePatientFile(patientId: string, file: File) {
   };
 }
 
-export async function deletePatientFile(storagePath: string) {
+export async function deleteUpload(storagePath: string) {
   await fs.rm(resolveUploadPath(storagePath), { force: true });
+}
+
+const LOGO_MIME: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg" };
+
+/** Logo de la ortopedia (PNG/JPG: los formatos que se pueden incrustar en el PDF). */
+export async function saveLogo(file: File) {
+  const ext = LOGO_MIME[file.type];
+  if (!ext) throw new Error("El logo debe ser una imagen PNG o JPG.");
+  if (file.size > 2 * 1024 * 1024) throw new Error("El logo no puede superar 2 MB.");
+  const storagePath = path.posix.join("_branding", `logo-${Date.now()}.${ext}`);
+  const full = resolveUploadPath(storagePath);
+  await fs.mkdir(path.dirname(full), { recursive: true });
+  await fs.writeFile(full, Buffer.from(await file.arrayBuffer()));
+  return storagePath;
+}
+
+export async function readUpload(storagePath: string) {
+  return fs.readFile(resolveUploadPath(storagePath));
 }

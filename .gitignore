@@ -10,6 +10,7 @@ next-env.d.ts
 *.db-journal
 *.db-wal
 *.db-shm
+*.db.*
 /uploads/*
 !/uploads/.gitkeep
 /backups/

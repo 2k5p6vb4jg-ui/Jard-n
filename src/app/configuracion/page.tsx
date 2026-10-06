@@ -1,68 +1,149 @@
-import { Building2, DatabaseBackup, HardDriveDownload, Info } from "lucide-react";
+import { BellRing, Building2, DatabaseBackup, HardDriveDownload, ImageIcon, Info, Plus, Receipt, Save, Trash2, Users } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/dates";
-import { formatEUR } from "@/lib/money";
+import { toEurosInput } from "@/lib/forms";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ActionForm, SubmitButton } from "@/components/ui/Form";
+import { FormSection, MoneyField, NumberField, TextAreaField, TextField } from "@/components/ui/Fields";
+import { InlineForm } from "@/components/ui/InlineForm";
+import { ConfirmButton } from "@/components/ui/ConfirmButton";
+import { LogoForm } from "@/components/settings/LogoForm";
+import { removeLogo, saveSettings, saveTechnician, uploadLogo } from "./actions";
 
 export const metadata = { title: "Ajustes" };
 
 export default async function SettingsPage() {
-  const [settings, backups] = await Promise.all([
+  const [settings, backups, technicians] = await Promise.all([
     prisma.settings.findUnique({ where: { id: 1 } }),
     prisma.backupRecord.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
+    prisma.technician.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }], include: { _count: { select: { workOrders: true } } } }),
   ]);
+  const logoUrl = settings?.logoPath ? `/api/logo?v=${settings.updatedAt.getTime()}` : null;
 
   return (
     <>
-      <PageHeader title="Ajustes" description="Datos de la ortopedia y copias de seguridad" />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader title="Copia de seguridad" icon={DatabaseBackup} subtitle="Base de datos completa (pacientes, taller, trazabilidad)" />
-          <div className="space-y-4 px-5 py-5">
-            <a
-              href="/api/backup"
-              className="flex min-h-14 items-center justify-center gap-3 rounded-xl bg-teal-600 px-5 text-lg font-medium text-white shadow-sm transition hover:bg-teal-700 active:scale-[0.98]"
-            >
-              <HardDriveDownload className="size-6" />
-              Descargar copia (.db)
-            </a>
-            <p className="flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-              <Info className="mt-0.5 size-4 shrink-0" />
-              Guarde el archivo en un pendrive o disco externo cifrado y custódielo bajo llave: contiene datos de salud (RGPD art. 9).
-              Los adjuntos de la carpeta <code className="mx-1">uploads/</code> se copian aparte.
-            </p>
-            {backups.length > 0 && (
-              <ul className="text-sm text-slate-500">
-                {backups.map((b) => (
-                  <li key={b.id}>{formatDate(b.createdAt)} · {b.fileName} · {(b.sizeBytes / 1024).toFixed(0)} KB</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </Card>
-        {settings && (
+      <PageHeader title="Ajustes" description="Datos de la ortopedia, técnicos y copias de seguridad" />
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <ActionForm action={saveSettings} submitLabel="Guardar ajustes" successMessage="Ajustes guardados.">
+            <FormSection title="Datos del establecimiento" icon={Building2} description="Aparecen en la cabecera de los presupuestos">
+              <TextField name="businessName" label="Nombre comercial" required defaultValue={settings?.businessName} />
+              <TextField name="legalName" label="Razón social" defaultValue={settings?.legalName} />
+              <TextField name="taxId" label="CIF / NIF" defaultValue={settings?.taxId} />
+              <TextField name="address" label="Dirección" defaultValue={settings?.address} className="sm:col-span-2" />
+              <TextField name="postalCode" label="Código postal" inputMode="numeric" defaultValue={settings?.postalCode} />
+              <TextField name="city" label="Localidad" defaultValue={settings?.city} />
+              <TextField name="province" label="Provincia" defaultValue={settings?.province} />
+              <TextField name="healthLicense" label="Licencia sanitaria" defaultValue={settings?.healthLicense} />
+              <TextField name="phone" label="Teléfono" type="tel" inputMode="tel" defaultValue={settings?.phone} />
+              <TextField name="email" label="Email" type="email" inputMode="email" defaultValue={settings?.email} />
+              <TextField name="website" label="Web" defaultValue={settings?.website} />
+            </FormSection>
+
+            <FormSection title="Taller y presupuestos" icon={Receipt}>
+              <MoneyField name="defaultHourlyRate" label="Tarifa por hora general" defaultValue={toEurosInput(settings?.defaultHourlyRateCents)} hint="Si el técnico no tiene tarifa propia" />
+              <NumberField name="defaultTaxRate" label="IVA por defecto" suffix="%" defaultValue={settings?.defaultTaxRate} />
+              <NumberField name="quoteValidityDays" label="Validez de presupuestos" suffix="días" defaultValue={settings?.quoteValidityDays} />
+              <TextAreaField
+                name="quoteLegalFooter"
+                label="Pie legal de los presupuestos"
+                rows={4}
+                defaultValue={settings?.quoteLegalFooter}
+                hint="Protección de datos, garantía de reparación, condiciones… Revíselo con su asesoría."
+              />
+            </FormSection>
+
+            <FormSection title="Avisos de renovación" icon={BellRing} description="Los cambios se aplican a las próximas entregas">
+              <NumberField name="insoleRenewalMonths" label="Plantillas: revisar a los" suffix="meses" defaultValue={settings?.insoleRenewalMonths} />
+              <NumberField name="stockingRenewalMonths" label="Medias: revisar a los" suffix="meses" defaultValue={settings?.stockingRenewalMonths} />
+              <NumberField name="renewalWarningDays" label="Avisar con antelación de" suffix="días" defaultValue={settings?.renewalWarningDays} />
+            </FormSection>
+          </ActionForm>
+
           <Card>
-            <CardHeader title="Datos del establecimiento" icon={Building2} />
-            <dl className="grid grid-cols-2 gap-3 px-5 py-5 text-sm">
-              {[
-                ["Nombre", settings.businessName],
-                ["CIF", settings.taxId],
-                ["Licencia sanitaria", settings.healthLicense],
-                ["Teléfono", settings.phone],
-                ["Dirección", [settings.address, settings.postalCode, settings.city].filter(Boolean).join(", ")],
-                ["Tarifa/hora", formatEUR(settings.defaultHourlyRateCents)],
-                ["IVA por defecto", `${settings.defaultTaxRate} %`],
-                ["Validez presupuestos", `${settings.quoteValidityDays} días`],
-              ].map(([k, v]) => (
-                <div key={k} className="rounded-lg bg-slate-50 px-3 py-2">
-                  <dt className="text-xs text-slate-500">{k}</dt>
-                  <dd className="font-medium text-slate-800">{v || "—"}</dd>
-                </div>
+            <CardHeader title="Técnicos" icon={Users} subtitle="Los técnicos con órdenes no se borran: se desactivan" />
+            <ul className="divide-y divide-slate-100">
+              {technicians.map((t) => (
+                <li key={t.id} className="p-5">
+                  <InlineForm action={saveTechnician.bind(null, t.id)} className="grid grid-cols-2 items-end gap-3 sm:grid-cols-[2fr_1fr_auto_auto]">
+                    <div className="col-span-2 sm:col-span-1">
+                      <label className="field-label" htmlFor={`tn-${t.id}`}>Nombre</label>
+                      <input id={`tn-${t.id}`} name="name" defaultValue={t.name} required className={`field ${t.active ? "" : "text-slate-400"}`} />
+                    </div>
+                    <div>
+                      <label className="field-label" htmlFor={`tr-${t.id}`}>Tarifa/hora (€)</label>
+                      <input id={`tr-${t.id}`} name="hourlyRate" inputMode="decimal" defaultValue={toEurosInput(t.hourlyRateCents)} placeholder="General" className="field" />
+                    </div>
+                    <label className="flex min-h-12 cursor-pointer items-center gap-2 rounded-xl px-3 ring-1 ring-inset ring-slate-200">
+                      <input type="checkbox" name="active" defaultChecked={t.active} className="size-5 accent-teal-600" />
+                      <span className="text-sm font-medium text-slate-700">Activo</span>
+                    </label>
+                    <SubmitButton icon={<Save className="size-5" />} variant="secondary" className="col-span-2 sm:col-span-1">Guardar</SubmitButton>
+                  </InlineForm>
+                  <p className="mt-2 text-xs text-slate-500">{t._count.workOrders} órdenes asignadas</p>
+                </li>
               ))}
-            </dl>
+            </ul>
+            <InlineForm action={saveTechnician.bind(null, null)} className="grid grid-cols-2 items-end gap-3 border-t border-slate-100 bg-slate-50/60 p-5 sm:grid-cols-[2fr_1fr_auto]">
+              <div className="col-span-2 sm:col-span-1">
+                <label className="field-label" htmlFor="tn-new">Nuevo técnico</label>
+                <input id="tn-new" name="name" required placeholder="Nombre y apellidos" className="field" />
+              </div>
+              <div className="col-span-2 sm:col-span-1">
+                <label className="field-label" htmlFor="tr-new">Tarifa/hora (€)</label>
+                <input id="tr-new" name="hourlyRate" inputMode="decimal" placeholder="General" className="field" />
+              </div>
+              <SubmitButton icon={<Plus className="size-5" />} className="col-span-2 sm:col-span-1">Añadir</SubmitButton>
+            </InlineForm>
           </Card>
-        )}
+        </div>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader title="Copia de seguridad" icon={DatabaseBackup} subtitle="Pacientes, taller y trazabilidad" />
+            <div className="space-y-4 px-5 py-5">
+              <a
+                href="/api/backup"
+                className="flex min-h-14 items-center justify-center gap-3 rounded-xl bg-teal-600 px-5 text-lg font-medium text-white shadow-sm transition hover:bg-teal-700 active:scale-[0.98]"
+              >
+                <HardDriveDownload className="size-6" />
+                Descargar copia (.db)
+              </a>
+              <p className="flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+                <Info className="mt-0.5 size-4 shrink-0" />
+                <span>
+                  Guárdela en un pendrive o disco externo cifrado y custodiado: contiene datos de salud (RGPD art. 9). Los adjuntos de la carpeta
+                  <code className="mx-1">uploads/</code>se copian aparte.
+                </span>
+              </p>
+              {backups.length > 0 && (
+                <ul className="space-y-1 text-sm text-slate-500">
+                  {backups.map((b) => (
+                    <li key={b.id}>
+                      {formatDate(b.createdAt)} · {(b.sizeBytes / 1024).toFixed(0)} KB
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader title="Logo" icon={ImageIcon} />
+            <div className="space-y-3 p-5">
+              <LogoForm action={uploadLogo} currentUrl={logoUrl} />
+              {logoUrl && (
+                <form action={removeLogo}>
+                  <ConfirmButton message="¿Quitar el logo?" icon={<Trash2 className="size-4" />} className="w-full text-sm text-slate-500 hover:bg-rose-50 hover:text-rose-600">
+                    Quitar logo
+                  </ConfirmButton>
+                </form>
+              )}
+            </div>
+          </Card>
+        </div>
       </div>
     </>
   );

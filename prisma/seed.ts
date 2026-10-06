@@ -29,7 +29,8 @@ const dni = (n: number) => `${String(n).padStart(8, "0")}${"TRWAGMYFPDXBNJZSQVHL
 async function reset() {
   // Borra también los archivos de los documentos que se van a eliminar (y sus carpetas vacías)
   const docs = await prisma.clinicalDocument.findMany({ select: { storagePath: true } });
-  await removeFiles(docs.map((d) => d.storagePath));
+  const logo = await prisma.settings.findUnique({ where: { id: 1 }, select: { logoPath: true } });
+  await removeFiles([...docs.map((d) => d.storagePath), ...(logo?.logoPath ? [logo.logoPath] : [])]);
   // Orden inverso a las dependencias
   await prisma.auditLog.deleteMany();
   await prisma.backupRecord.deleteMany();

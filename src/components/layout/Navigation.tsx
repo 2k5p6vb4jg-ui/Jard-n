@@ -10,14 +10,19 @@ function isActive(pathname: string, href: string) {
 }
 
 /** Barra lateral (escritorio/tablet horizontal) */
-export function Sidebar({ businessName }: { businessName: string }) {
+export function Sidebar({ businessName, logoUrl }: { businessName: string; logoUrl: string | null }) {
   const pathname = usePathname();
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">
       <div className="flex items-center gap-3 px-6 py-6">
-        <span className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-teal-500 to-indigo-500 text-white shadow-sm">
-          <Footprints className="size-5" />
-        </span>
+        {logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoUrl} alt="" className="size-10 shrink-0 rounded-xl object-contain" />
+        ) : (
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-teal-500 to-indigo-500 text-white shadow-sm">
+            <Footprints className="size-5" />
+          </span>
+        )}
         <div className="leading-tight">
           <p className="font-semibold text-slate-900">{businessName}</p>
           <p className="text-xs text-slate-500">Gestión clínica y taller</p>

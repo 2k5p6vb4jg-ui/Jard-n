@@ -7,6 +7,8 @@ import type { QuoteLine } from "../quotes";
 
 export interface QuotePdfData {
   settings: Settings | null;
+  /** Logo PNG/JPG ya leído del disco */
+  logo?: { bytes: Uint8Array; type: "png" | "jpg" } | null;
   quote: {
     number: string;
     issuedAt: Date;
@@ -104,7 +106,19 @@ export async function renderQuotePdf(data: QuotePdfData): Promise<Uint8Array> {
 
   // ── Cabecera ──────────────────────────────────────────────────────────────
   page.drawRectangle({ x: 0, y: H - 8, width: W, height: 8, color: TEAL });
-  text(businessName, M, y - 6, 20, bold, TEAL);
+  // Logo opcional a la izquierda (máx. 64×64 pt, manteniendo proporción); el texto se desplaza a su derecha
+  let hx = M;
+  if (data.logo) {
+    try {
+      const img = data.logo.type === "png" ? await pdf.embedPng(data.logo.bytes) : await pdf.embedJpg(data.logo.bytes);
+      const scale = Math.min(64 / img.width, 64 / img.height);
+      page.drawImage(img, { x: M, y: y - 64 + (64 - img.height * scale) / 2 + 8, width: img.width * scale, height: img.height * scale });
+      hx = M + img.width * scale + 14;
+    } catch {
+      // Imagen dañada: el presupuesto se genera igualmente sin logo
+    }
+  }
+  text(businessName, hx, y - 6, 20, bold, TEAL);
   const issuer = [
     s?.legalName && s.legalName !== businessName ? s.legalName : null,
     s?.taxId ? `CIF/NIF: ${s.taxId}` : null,
@@ -112,7 +126,7 @@ export async function renderQuotePdf(data: QuotePdfData): Promise<Uint8Array> {
     [s?.phone && `Tel. ${s.phone}`, s?.email].filter(Boolean).join(" · ") || null,
     s?.healthLicense ? `Licencia sanitaria: ${s.healthLicense}` : null,
   ].filter((l): l is string => !!l);
-  issuer.forEach((l, i) => text(l, M, y - 26 - i * 13, 9, font, SLATE_600));
+  issuer.forEach((l, i) => text(l, hx, y - 26 - i * 13, 9, font, SLATE_600));
 
   const boxW = 190;
   const boxX = W - M - boxW;

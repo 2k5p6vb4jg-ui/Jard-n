@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { DocumentType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
-import { deletePatientFile, savePatientFile } from "@/lib/storage";
+import { deleteUpload, savePatientFile } from "@/lib/storage";
 import { type ActionState, date, FormError, handle, oneOf, str } from "@/lib/forms";
 
 /**
@@ -67,7 +67,7 @@ export async function deleteDocument(patientId: string, documentId: string) {
   const doc = await prisma.clinicalDocument.findFirst({ where: { id: documentId, patientId } });
   if (!doc) return;
   await prisma.clinicalDocument.delete({ where: { id: doc.id } });
-  await deletePatientFile(doc.storagePath);
+  await deleteUpload(doc.storagePath);
   await audit("DELETE", "ClinicalDocument", doc.id, doc.title);
   revalidatePath(`/pacientes/${patientId}`);
 }

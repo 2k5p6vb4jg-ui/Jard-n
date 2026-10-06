@@ -18,13 +18,13 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const settings = await prisma.settings.findUnique({ where: { id: 1 }, select: { businessName: true } });
+  const settings = await prisma.settings.findUnique({ where: { id: 1 }, select: { businessName: true, logoPath: true, updatedAt: true } });
 
   return (
     <html lang="es">
       <body>
         <div className="flex min-h-dvh">
-          <Sidebar businessName={settings?.businessName ?? "Jardón Ortopedia"} />
+          <Sidebar businessName={settings?.businessName ?? "Jardón Ortopedia"} logoUrl={settings?.logoPath ? `/api/logo?v=${settings.updatedAt.getTime()}` : null} />
           <main className="min-w-0 flex-1 px-4 pb-28 pt-6 sm:px-8 lg:pb-10 lg:pt-8">
             <div className="mx-auto max-w-7xl">{children}</div>
           </main>

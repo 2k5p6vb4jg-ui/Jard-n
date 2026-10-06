@@ -325,14 +325,18 @@ model InsolePrescription {
   technicalNotes String?
 
   // Ciclo de vida
-  status        PrescriptionStatus @default(PENDING)
-  priceCents    Int?
-  measuredAt    DateTime           @default(now())
-  deliveredAt   DateTime?
+  status              PrescriptionStatus @default(PENDING)
+  priceCents          Int?
+  measuredAt          DateTime           @default(now())
+  deliveredAt         DateTime?
   /// deliveredAt + Settings.insoleRenewalMonths (12 meses). Indexado para el panel.
-  nextReviewAt  DateTime?
-  renewalStatus RenewalStatus      @default(PENDING)
-  renewalNote   String?
+  nextReviewAt        DateTime?
+  renewalStatus       RenewalStatus      @default(PENDING)
+  renewalNote         String?
+  /// Última gestión del aviso (llamada, descarte, aplazamiento)
+  renewalUpdatedAt    DateTime?
+  /// "Recordar más tarde": el aviso no se muestra hasta esta fecha
+  renewalSnoozedUntil DateTime?
 
   documents ClinicalDocument[]
 
@@ -418,14 +422,18 @@ model CompressionStocking {
   patientContribCents Int? // Aportación del usuario
 
   // Ciclo de vida
-  status        PrescriptionStatus @default(PENDING)
-  priceCents    Int?
-  measuredAt    DateTime           @default(now())
-  deliveredAt   DateTime?
+  status              PrescriptionStatus @default(PENDING)
+  priceCents          Int?
+  measuredAt          DateTime           @default(now())
+  deliveredAt         DateTime?
   /// deliveredAt + Settings.stockingRenewalMonths (6 meses).
-  nextReviewAt  DateTime?
-  renewalStatus RenewalStatus      @default(PENDING)
-  renewalNote   String?
+  nextReviewAt        DateTime?
+  renewalStatus       RenewalStatus      @default(PENDING)
+  renewalNote         String?
+  /// Última gestión del aviso (llamada, descarte, aplazamiento)
+  renewalUpdatedAt    DateTime?
+  /// "Recordar más tarde": el aviso no se muestra hasta esta fecha
+  renewalSnoozedUntil DateTime?
 
   documents ClinicalDocument[]
 

@@ -6,6 +6,7 @@ import {
   Footprints,
   Pencil,
   Plus,
+  RotateCcw,
   Mail,
   MapPin,
   Phone,
@@ -25,6 +26,7 @@ import {
   insoleFinish,
   insoleMaterial,
   prescriptionStatus,
+  renewalStatus,
   workOrderStatus,
 } from "@/lib/labels";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -34,6 +36,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { DocumentUploader } from "@/components/patients/DocumentUploader";
 import { DocumentGallery } from "@/components/patients/DocumentGallery";
 import { deleteDocument, uploadDocuments } from "../documents";
+import { updateRenewal } from "@/app/renewals";
+import { SubmitButton } from "@/components/ui/Form";
 import { LinkButton } from "@/components/ui/Button";
 
 function AddLink({ href, children }: { href: string; children: React.ReactNode }) {
@@ -42,6 +46,21 @@ function AddLink({ href, children }: { href: string; children: React.ReactNode }
       <Plus className="size-4" />
       {children}
     </Link>
+  );
+}
+
+/** Estado del aviso de renovación; un aviso descartado se puede reactivar. */
+function RenewalBadge({ kind, id, status, delivered }: { kind: "INSOLE" | "STOCKING"; id: string; status: keyof typeof renewalStatus; delivered: boolean }) {
+  if (!delivered || status === "PENDING") return null;
+  return (
+    <span className="inline-flex items-center gap-1">
+      <Badge tone={renewalStatus[status].tone}>{renewalStatus[status].label}</Badge>
+      {status === "DISMISSED" && (
+        <form action={updateRenewal.bind(null, kind, id, "REOPEN")}>
+          <SubmitButton icon={<RotateCcw className="size-3.5" />} variant="secondary" className="min-h-8 px-2 text-xs shadow-none">Reactivar aviso</SubmitButton>
+        </form>
+      )}
+    </span>
   );
 }
 
@@ -128,6 +147,7 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
                       <Badge tone={prescriptionStatus[i.status].tone}>{prescriptionStatus[i.status].label}</Badge>
                       <EditLink href={`/pacientes/${patient.id}/plantillas/${i.id}`} />
                       {i.nextReviewAt && <Badge tone={i.nextReviewAt < new Date() ? "rose" : "slate"}>Revisión {formatDate(i.nextReviewAt)}</Badge>}
+                      <RenewalBadge kind="INSOLE" id={i.id} status={i.renewalStatus} delivered={i.status === "DELIVERED"} />
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {i.pathologies.map((p) => <Badge key={p.id} tone="indigo">{footPathology[p.pathology]}</Badge>)}
@@ -162,6 +182,7 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
                       <EditLink href={`/pacientes/${patient.id}/medias/${s.id}`} />
                       {s.isPublicHealth && <Badge tone="violet">Seguridad Social</Badge>}
                       {s.nextReviewAt && <Badge tone={s.nextReviewAt < new Date() ? "rose" : "slate"}>Revisión {formatDate(s.nextReviewAt)}</Badge>}
+                      <RenewalBadge kind="STOCKING" id={s.id} status={s.renewalStatus} delivered={s.status === "DELIVERED"} />
                     </div>
                     <dl className="grid grid-cols-3 gap-2 sm:grid-cols-6">
                       {measure("cB", s.cB)}

@@ -2,10 +2,6 @@ import Link from "next/link";
 import {
   AlertTriangle,
   BellRing,
-  CalendarClock,
-  ChevronRight,
-  Footprints,
-  Phone,
   UserPlus,
   Wrench,
   ClipboardPlus,
@@ -13,12 +9,12 @@ import {
 import { prisma } from "@/lib/prisma";
 import { getRenewalAlerts } from "@/lib/renewals";
 import { WORK_ORDER_FLOW, equipmentCategory, priority, workOrderStatus } from "@/lib/labels";
-import { formatDate } from "@/lib/dates";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { RenewalList } from "@/components/dashboard/RenewalList";
 
 export const dynamic = "force-dynamic";
 
@@ -55,15 +51,15 @@ export default async function DashboardPage() {
       />
 
       {/* Órdenes por estado */}
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+      <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-6">
         {WORK_ORDER_FLOW.map((s) => (
           <Link
             key={s}
             href={`/taller?estado=${s}`}
-            className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-teal-300 hover:shadow"
+            className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-teal-300 hover:shadow sm:block sm:p-4"
           >
             <Badge tone={workOrderStatus[s].tone}>{workOrderStatus[s].label}</Badge>
-            <p className="mt-3 text-3xl font-semibold text-slate-900">{count(s)}</p>
+            <p className="text-2xl font-semibold text-slate-900 sm:mt-3 sm:text-3xl">{count(s)}</p>
           </Link>
         ))}
       </div>
@@ -77,41 +73,7 @@ export default async function DashboardPage() {
             icon={BellRing}
             action={overdue > 0 ? <Badge tone="rose"><AlertTriangle className="size-3.5" />{overdue} vencidos</Badge> : undefined}
           />
-          {alerts.length === 0 ? (
-            <EmptyState icon={BellRing} title="Sin renovaciones pendientes" text="Aquí aparecerán los pacientes cuya prescripción vence en los próximos días." />
-          ) : (
-            <ul className="divide-y divide-slate-100">
-              {alerts.map((a) => (
-                <li key={`${a.kind}-${a.id}`}>
-                  <Link href={`/pacientes/${a.patientId}`} className="flex min-h-16 items-center gap-4 px-5 py-3 transition hover:bg-slate-50">
-                    <span
-                      className={`grid size-10 shrink-0 place-items-center rounded-full ${
-                        a.kind === "INSOLE" ? "bg-indigo-50 text-indigo-600" : "bg-teal-50 text-teal-600"
-                      }`}
-                    >
-                      {a.kind === "INSOLE" ? <Footprints className="size-5" /> : <CalendarClock className="size-5" />}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium text-slate-800">{a.patientName}</p>
-                      <p className="truncate text-sm text-slate-500">
-                        {a.detail} · entregadas {formatDate(a.deliveredAt)}
-                        {a.phone && (
-                          <span className="ml-2 inline-flex items-center gap-1">
-                            <Phone className="size-3.5" />
-                            {a.phone}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    <Badge tone={a.severity === "overdue" ? "rose" : "amber"}>
-                      {a.daysLeft < 0 ? `Vencido hace ${-a.daysLeft} d` : a.daysLeft === 0 ? "Vence hoy" : `En ${a.daysLeft} d`}
-                    </Badge>
-                    <ChevronRight className="size-5 shrink-0 text-slate-300" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
+          <RenewalList alerts={alerts} />
         </Card>
 
         {/* Taller activo */}
