@@ -4,7 +4,6 @@ import {
   CalendarClock,
   FileText,
   Footprints,
-  ImageIcon,
   Pencil,
   Plus,
   Mail,
@@ -20,7 +19,6 @@ import { formatEUR } from "@/lib/money";
 import {
   compressionClass,
   correctionType,
-  documentType,
   equipmentCategory,
   footPathology,
   garmentType,
@@ -33,6 +31,9 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { DocumentUploader } from "@/components/patients/DocumentUploader";
+import { DocumentGallery } from "@/components/patients/DocumentGallery";
+import { deleteDocument, uploadDocuments } from "../documents";
 import { LinkButton } from "@/components/ui/Button";
 
 function AddLink({ href, children }: { href: string; children: React.ReactNode }) {
@@ -66,6 +67,11 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
   });
   if (!patient) notFound();
 
+  const prescriptionLinks = [
+    ...patient.insoles.map((i) => ({ value: `insole:${i.id}`, label: `Plantillas ${insoleMaterial[i.material]}${i.shoreDensity ? ` ${i.shoreDensity}º` : ""} · ${formatDate(i.measuredAt)}` })),
+    ...patient.stockings.map((s) => ({ value: `stocking:${s.id}`, label: `Medias ${s.compressionClass} · ${formatDate(s.measuredAt)}` })),
+  ];
+
   const measure = (label: string, v: number | null, unit = "cm") =>
     v != null && (
       <div key={label} className="rounded-lg bg-slate-50 px-3 py-2">
@@ -91,7 +97,7 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Ficha general */}
         <Card className="lg:col-span-1">
           <CardHeader title="Ficha general" icon={Stethoscope} />
@@ -180,30 +186,15 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
 
           {/* Documentos */}
           <Card>
-            <CardHeader title="Documentos y estudios de pisada" icon={FileText} />
-            {patient.documents.length === 0 ? (
-              <EmptyState icon={FileText} title="Sin documentos" />
-            ) : (
-              <ul className="grid gap-3 p-5 sm:grid-cols-2">
-                {patient.documents.map((d) => (
-                  <li key={d.id}>
-                    <a
-                      href={`/api/uploads/${d.storagePath}`}
-                      target="_blank"
-                      className="flex min-h-16 items-center gap-3 rounded-xl border border-slate-200 p-3 hover:border-teal-300"
-                    >
-                      <span className="grid size-10 place-items-center rounded-lg bg-slate-100 text-slate-500">
-                        {d.mimeType.startsWith("image/") ? <ImageIcon className="size-5" /> : <FileText className="size-5" />}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-slate-800">{d.title}</p>
-                        <p className="text-xs text-slate-500">{documentType[d.type]} · {formatDate(d.takenAt ?? d.createdAt)}</p>
-                      </div>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <CardHeader title="Documentos y estudios de pisada" icon={FileText} subtitle="Fotos de huellas, estudios digitales, recetas e informes" />
+            <DocumentUploader action={uploadDocuments.bind(null, patient.id)} links={prescriptionLinks} />
+            <DocumentGallery
+              docs={patient.documents.map((d) => ({
+                ...d,
+                linkLabel: d.insoleId ? (prescriptionLinks.find((l) => l.value === `insole:${d.insoleId}`)?.label ?? null) : d.stockingId ? (prescriptionLinks.find((l) => l.value === `stocking:${d.stockingId}`)?.label ?? null) : null,
+              }))}
+              deleteAction={deleteDocument.bind(null, patient.id)}
+            />
           </Card>
 
           {/* Taller */}

@@ -5,7 +5,7 @@ import { resolveUploadPath } from "@/lib/storage";
 export const runtime = "nodejs";
 
 /** Sirve adjuntos clínicos SOLO si están registrados en la BD (nunca listado de carpeta). */
-export async function GET(_req: Request, { params }: { params: Promise<{ path: string[] }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ path: string[] }> }) {
   const storagePath = (await params).path.join("/");
   const doc = await prisma.clinicalDocument.findUnique({ where: { storagePath } });
   if (!doc) return new Response("No encontrado", { status: 404 });
@@ -15,7 +15,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ path: s
     return new Response(data, {
       headers: {
         "Content-Type": doc.mimeType,
-        "Content-Disposition": `inline; filename="${encodeURIComponent(doc.originalName)}"`,
+        // ?descargar=1 fuerza la descarga; por defecto se abre en el navegador (visor de PDF / imagen)
+        "Content-Disposition": `${new URL(req.url).searchParams.has("descargar") ? "attachment" : "inline"}; filename*=UTF-8''${encodeURIComponent(doc.originalName)}`,
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
       },

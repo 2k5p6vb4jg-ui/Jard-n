@@ -90,9 +90,18 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
   avance/retroceso de estado, anulación, piezas con coste y PVP, cronómetro del técnico y tiempo manual,
   desglose de costes en vivo. Al entregar un equipo con nº de serie, la intervención queda en su histórico.
 - **Trazabilidad:** alta y edición de productos; la garantía se calcula desde la fecha de entrega.
+- **Documentos:** botón «Hacer foto» que abre la cámara trasera del móvil/tablet (`capture="environment"`,
+  funciona sin HTTPS) y subida de PDF, imágenes o datos exportados del software de pisada. Las fotos
+  grandes se reducen en el propio dispositivo antes de enviarse. Galería con filtros, visor a pantalla
+  completa, descarga y borrado. Archivos en `uploads/<paciente>/`, servidos solo si están registrados.
+- **Presupuestos en PDF:** se generan desde la orden con copia fija de importes (`PRES-AAAA-NNNN`),
+  con datos de la ortopedia, cliente, equipo, desglose, IVA, validez, firma y pie legal en cada página.
+  Estados: borrador → entregado → aceptado (la orden pasa a «En reparación») o rechazado; caducan solos.
+
+![Presupuesto](docs/capturas/presupuesto-pdf.png)
 
 ## Próxima fase
 
-Documentos y fotos con la cámara (`<input capture="environment">`, funciona sin HTTPS), generador de
-presupuestos en PDF, gestión de avisos desde el panel (llamado / renovado / no renueva), ajustes editables
-y copia de seguridad que incluya los adjuntos.
+Gestión de avisos desde el panel (llamado / renovado / no renueva), ajustes editables (datos fiscales,
+logo en el PDF, técnicos), copia de seguridad que incluya los adjuntos y restauración, PIN de acceso,
+y derechos RGPD (exportar / borrar los datos de un paciente).

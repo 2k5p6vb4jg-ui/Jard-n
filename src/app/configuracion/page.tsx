@@ -16,7 +16,7 @@ export default async function SettingsPage() {
   return (
     <>
       <PageHeader title="Ajustes" description="Datos de la ortopedia y copias de seguridad" />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader title="Copia de seguridad" icon={DatabaseBackup} subtitle="Base de datos completa (pacientes, taller, trazabilidad)" />
           <div className="space-y-4 px-5 py-5">

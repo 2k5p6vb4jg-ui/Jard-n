@@ -6,6 +6,9 @@ import {
   Ban,
   Check,
   Clock,
+  Download,
+  Eye,
+  FilePlus2,
   FileText,
   History,
   Package,
@@ -13,6 +16,9 @@ import {
   Play,
   Plus,
   Receipt,
+  Send,
+  ThumbsDown,
+  ThumbsUp,
   RotateCcw,
   ScanBarcode,
   Square,
@@ -34,6 +40,8 @@ import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { InlineForm } from "@/components/ui/InlineForm";
 import { Elapsed } from "@/components/workshop/Elapsed";
 import { addManualTime, addPart, changeStatus, deletePart, deleteTimeEntry, startTimer, stopTimer } from "../actions";
+import { createQuote, setQuoteStatus } from "../quotes";
+import { effectiveQuoteStatus } from "@/lib/quotes";
 
 const fmtMinutes = (m: number) => (m >= 60 ? `${Math.floor(m / 60)} h ${m % 60 ? `${m % 60} min` : ""}` : `${m} min`);
 
@@ -158,7 +166,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
         )}
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           {/* ── Datos del servicio ─────────────────────────────────────── */}
           <Card>
@@ -319,17 +327,70 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
           </Card>
 
           <Card>
-            <CardHeader title="Presupuestos" icon={FileText} />
-            <ul className="divide-y divide-slate-100 text-sm">
-              {order.quotes.map((q) => (
-                <li key={q.id} className="flex items-center justify-between gap-2 px-5 py-3">
-                  <span className="font-mono">{q.number}</span>
-                  <Badge tone={quoteStatus[q.status].tone}>{quoteStatus[q.status].label}</Badge>
-                  <span className="font-medium">{formatEUR(q.totalCents)}</span>
-                </li>
-              ))}
-              {order.quotes.length === 0 && <li className="px-5 py-4 text-slate-500">El generador de presupuestos en PDF llega en el siguiente paso.</li>}
+            <CardHeader title="Presupuestos" icon={FileText} subtitle="PDF con desglose, validez y pie legal" />
+            <ul className="divide-y divide-slate-100">
+              {order.quotes.map((q, _i, all) => {
+                const hasAccepted = all.some((x) => x.status === "ACCEPTED");
+                const st = effectiveQuoteStatus(q) as keyof typeof quoteStatus;
+                const open = st === "DRAFT" || st === "SENT";
+                const quoteForm = (to: "SENT" | "ACCEPTED" | "REJECTED", label: string, variant: "primary" | "secondary" | "danger", icon: React.ReactNode) => (
+                  <form action={setQuoteStatus.bind(null, id, q.id, to)} className="contents">
+                    <SubmitButton icon={icon} variant={variant} className="min-h-11 flex-1 px-3 text-sm">{label}</SubmitButton>
+                  </form>
+                );
+                return (
+                  <li key={q.id} className="space-y-3 px-5 py-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-sm font-medium">{q.number}</span>
+                      <Badge tone={quoteStatus[st].tone}>{quoteStatus[st].label}</Badge>
+                    </div>
+                    <div className="flex items-end justify-between gap-2">
+                      <p className="text-xs text-slate-500">{formatDate(q.issuedAt)} · válido hasta {formatDate(q.validUntil)}</p>
+                      <p className="text-lg font-semibold text-slate-900">{formatEUR(q.totalCents)}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <a href={`/api/presupuestos/${q.id}`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-white px-3 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
+                        <Eye className="size-4" /> Ver PDF
+                      </a>
+                      <a href={`/api/presupuestos/${q.id}?descargar=1`} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-white px-3 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
+                        <Download className="size-4" /> Descargar
+                      </a>
+                    </div>
+                    {open && !closed && !hasAccepted && (
+                      <div className="flex flex-wrap gap-2">
+                        {st === "DRAFT" && quoteForm("SENT", "Entregado al cliente", "secondary", <Send className="size-4" />)}
+                        {quoteForm("ACCEPTED", "Aceptado", "primary", <ThumbsUp className="size-4" />)}
+                        {quoteForm("REJECTED", "Rechazado", "secondary", <ThumbsDown className="size-4" />)}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
+            {!closed && (
+              <InlineForm action={createQuote.bind(null, id)} className="space-y-3 border-t border-slate-100 bg-slate-50/60 p-5">
+                <p className="font-medium text-slate-700">{order.quotes.length ? "Nuevo presupuesto" : "Generar presupuesto"}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {order.laborMode === "HOURLY" && (
+                    <div>
+                      <label htmlFor="estimatedHours" className="field-label">Horas estimadas</label>
+                      <input id="estimatedHours" name="estimatedHours" inputMode="decimal" defaultValue={minutesWorked ? (minutesWorked / 60).toFixed(2).replace(".", ",") : ""} placeholder="p. ej. 1,5" className="field" />
+                      <p className="mt-1 text-xs text-slate-500">Vacío = tiempo ya registrado</p>
+                    </div>
+                  )}
+                  <div>
+                    <label htmlFor="validityDays" className="field-label">Validez (días)</label>
+                    <input id="validityDays" name="validityDays" inputMode="numeric" defaultValue={settings?.quoteValidityDays ?? 30} className="field" />
+                  </div>
+                  <div className="col-span-2">
+                    <label htmlFor="quoteNotes" className="field-label">Observaciones para el cliente</label>
+                    <textarea id="quoteNotes" name="notes" rows={2} placeholder="Plazo de entrega, condiciones…" className="field min-h-20 py-3" />
+                  </div>
+                </div>
+                <SubmitButton icon={<FilePlus2 className="size-5" />} className="w-full">Generar presupuesto</SubmitButton>
+                <p className="text-xs text-slate-500">Se guarda una copia fija de las piezas y la mano de obra actuales.</p>
+              </InlineForm>
+            )}
           </Card>
 
           <Card>

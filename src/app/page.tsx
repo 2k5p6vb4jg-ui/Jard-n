@@ -68,7 +68,7 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
         {/* Avisos de renovación */}
         <Card className="xl:col-span-3">
           <CardHeader

@@ -2,10 +2,14 @@
  * Datos de prueba FICTICIOS para testear la app de inmediato.
  * Ejecutar con:  npm run db:seed   (también se lanza tras `prisma migrate reset`)
  *
+ * ⚠️  BORRA todos los datos (y los adjuntos registrados). Solo para pruebas, nunca con datos reales.
+ *
  * Las fechas se calculan respecto a HOY para que el panel muestre siempre
  * avisos de renovación vencidos y próximos a vencer.
  */
 import { PrismaClient, type PartCategory, type Prisma, type WorkOrderStatus } from "@prisma/client";
+import { demoPdf, footprintPng, removeFiles, writeDemoFile } from "./demo-files";
+import { buildQuoteSnapshot } from "../src/lib/quotes";
 
 const prisma = new PrismaClient();
 
@@ -23,6 +27,9 @@ const addMonths = (d: Date, m: number) => {
 const dni = (n: number) => `${String(n).padStart(8, "0")}${"TRWAGMYFPDXBNJZSQVHLCKE"[n % 23]}`;
 
 async function reset() {
+  // Borra también los archivos de los documentos que se van a eliminar (y sus carpetas vacías)
+  const docs = await prisma.clinicalDocument.findMany({ select: { storagePath: true } });
+  await removeFiles(docs.map((d) => d.storagePath));
   // Orden inverso a las dependencias
   await prisma.auditLog.deleteMany();
   await prisma.backupRecord.deleteMany();
@@ -217,15 +224,23 @@ async function main() {
     });
   }
 
-  // ── Documentos clínicos (registros sin archivo físico real) ─────────────
-  await prisma.clinicalDocument.createMany({
-    data: [
-      { patientId: javier.id, type: "GAIT_STUDY", source: "UPLOAD", title: "Estudio biomecánico en cinta", originalName: "estudio-pisada.pdf", storagePath: `${javier.id}/demo_estudio-pisada.pdf`, mimeType: "application/pdf", sizeBytes: 482_113, takenAt: daysAgo(360) },
-      { patientId: javier.id, type: "FOOTPRINT_PHOTO", source: "CAMERA", title: "Pedigrafía bilateral", originalName: "huella.jpg", storagePath: `${javier.id}/demo_huella.jpg`, mimeType: "image/jpeg", sizeBytes: 1_204_551, takenAt: daysAgo(360) },
-      { patientId: carmen.id, type: "PRESCRIPTION", source: "CAMERA", title: "Receta SS medias CCL2", originalName: "receta.jpg", storagePath: `${carmen.id}/demo_receta.jpg`, mimeType: "image/jpeg", sizeBytes: 803_220, takenAt: daysAgo(184) },
-      { patientId: elena.id, type: "CONSENT", source: "UPLOAD", title: "Consentimiento tutora legal", originalName: "consentimiento.pdf", storagePath: `${elena.id}/demo_consentimiento.pdf`, mimeType: "application/pdf", sizeBytes: 95_400, takenAt: daysAgo(5) },
-    ],
-  });
+  // ── Documentos clínicos (archivos de ejemplo generados en uploads/) ────
+  const demoDocs = [
+    { patientId: javier.id, type: "GAIT_STUDY" as const, source: "UPLOAD" as const, title: "Estudio biomecánico en cinta", name: "estudio-pisada.pdf", mimeType: "application/pdf", takenAt: daysAgo(360),
+      data: await demoPdf("Estudio biomecánico de la marcha", ["Paciente: Javier Martínez Ruiz", "Velocidad: 10 km/h en cinta", "Resultado: hiperpronación bilateral en apoyo medio", "Recomendación: plantilla deportiva EVA 45º con cuña interna 3 mm"]) },
+    { patientId: javier.id, type: "FOOTPRINT_PHOTO" as const, source: "CAMERA" as const, title: "Pedigrafía bilateral", name: "huella.png", mimeType: "image/png", takenAt: daysAgo(360), data: footprintPng(true) },
+    { patientId: elena.id, type: "FOOTPRINT_PHOTO" as const, source: "CAMERA" as const, title: "Pedigrafía inicial", name: "huella.png", mimeType: "image/png", takenAt: daysAgo(5), data: footprintPng(true) },
+    { patientId: antonio.id, type: "FOOTPRINT_PHOTO" as const, source: "CAMERA" as const, title: "Pedigrafía", name: "huella.png", mimeType: "image/png", takenAt: daysAgo(130), data: footprintPng(false) },
+    { patientId: carmen.id, type: "PRESCRIPTION" as const, source: "UPLOAD" as const, title: "Receta SS medias CCL2", name: "receta.pdf", mimeType: "application/pdf", takenAt: daysAgo(184),
+      data: await demoPdf("Prescripción de material ortoprotésico", ["Paciente: Carmen García López", "Producto: media de compresión normal CCL2, corta (A-D)", "Dra. Pilar Esteve · Col. 464612345"]) },
+    { patientId: elena.id, type: "CONSENT" as const, source: "UPLOAD" as const, title: "Consentimiento tutora legal", name: "consentimiento.pdf", mimeType: "application/pdf", takenAt: daysAgo(5),
+      data: await demoPdf("Consentimiento informado", ["Paciente menor: Elena Jiménez Ortega", "Representante legal: Ana Ortega", "Autoriza el tratamiento de datos de salud (RGPD art. 9.2.a)"]) },
+  ];
+  for (const { data, name, ...d } of demoDocs) {
+    const storagePath = `${d.patientId}/demo_${name}`;
+    const sizeBytes = await writeDemoFile(storagePath, data);
+    await prisma.clinicalDocument.create({ data: { ...d, originalName: name, storagePath, sizeBytes } });
+  }
 
   // ── Trazabilidad: productos de alto valor ───────────────────────────────
   const sillaElectrica = await prisma.trackedProduct.create({
@@ -400,15 +415,20 @@ async function main() {
     });
 
     if (o.status === "QUOTED") {
-      const partsCents = (o.parts ?? []).reduce((s, x) => s + x.quantity * x.unitPriceCents, 0);
-      const laborCents = Math.round(((o.minutes ?? []).reduce((a, b) => a + b, 0) / 60) * 3800 + 3800); // + 1 h estimada de montaje
-      const subtotalCents = partsCents + laborCents;
-      const taxCents = Math.round(subtotalCents * 0.21);
+      const { lines, discountPercent: _d, ...totals } = buildQuoteSnapshot({
+        parts: (o.parts ?? []).map((x) => ({ ...x, unit: x.unit ?? "ud" })),
+        laborMode: "HOURLY",
+        laborRateCents: 3800,
+        laborFixedCents: null,
+        laborMinutes: (o.minutes ?? []).reduce((a, b) => a + b, 0) + 60, // + 1 h estimada de montaje
+        discountPercent: 0,
+        taxRate: 21,
+      });
       await prisma.quote.create({
         data: {
           number: `PRES-${year}-0001`, workOrderId: wo.id, status: "SENT", issuedAt: daysAgo(2), validUntil: daysAhead(28),
-          partsCents, laborCents, subtotalCents, taxRate: 21, taxCents, totalCents: subtotalCents + taxCents,
-          linesJson: JSON.stringify({ parts: o.parts, laborMinutes: (o.minutes ?? []).reduce((a, b) => a + b, 0) + 60 }),
+          ...totals, notes: "Plazo estimado de reparación: 3 días laborables desde la aceptación.",
+          linesJson: JSON.stringify({ lines }),
         },
       });
     }

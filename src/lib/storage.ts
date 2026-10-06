@@ -34,12 +34,35 @@ export function resolveUploadPath(relative: string): string {
   return full;
 }
 
+export const MAX_FILE_BYTES = 25 * 1024 * 1024;
+
+const MIME_BY_EXT: Record<string, string> = {
+  pdf: "application/pdf",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  heic: "image/heic",
+  csv: "text/csv",
+  json: "application/json",
+  zip: "application/zip",
+};
+
+/** Algunos navegadores no informan el tipo (p. ej. CSV exportado del software de pisada): se deduce por extensión. */
+export function detectMime(file: File): string | null {
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  const mime = file.type || MIME_BY_EXT[ext] || "";
+  return ALLOWED_MIME.has(mime) ? mime : null;
+}
+
 export async function savePatientFile(patientId: string, file: File) {
-  if (!ALLOWED_MIME.has(file.type)) throw new Error(`Tipo de archivo no permitido: ${file.type}`);
+  const mime = detectMime(file);
+  if (!mime) throw new Error(`Tipo de archivo no permitido: ${file.name}`);
+  if (file.size > MAX_FILE_BYTES) throw new Error(`«${file.name}» supera el máximo de 25 MB.`);
   if (!/^[a-z0-9]+$/i.test(patientId)) throw new Error("Paciente no válido");
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const stamp = `${new Date().toISOString().replace(/[:.]/g, "-")}_${crypto.randomBytes(3).toString("hex")}`;
   const storagePath = path.posix.join(patientId, `${stamp}_${slugify(file.name) || "archivo"}`);
   const full = resolveUploadPath(storagePath);
 
@@ -49,7 +72,7 @@ export async function savePatientFile(patientId: string, file: File) {
   return {
     storagePath,
     originalName: file.name,
-    mimeType: file.type,
+    mimeType: mime,
     sizeBytes: buffer.length,
     sha256: crypto.createHash("sha256").update(buffer).digest("hex"),
   };
