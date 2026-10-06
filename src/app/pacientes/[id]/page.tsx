@@ -5,6 +5,8 @@ import {
   FileText,
   Footprints,
   ImageIcon,
+  Pencil,
+  Plus,
   Mail,
   MapPin,
   Phone,
@@ -31,6 +33,25 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { LinkButton } from "@/components/ui/Button";
+
+function AddLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link href={href} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 font-medium text-teal-700 ring-1 ring-inset ring-teal-200 hover:bg-teal-50">
+      <Plus className="size-4" />
+      {children}
+    </Link>
+  );
+}
+
+function EditLink({ href }: { href: string }) {
+  return (
+    <Link href={href} className="ml-auto inline-flex min-h-10 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-slate-600 hover:bg-slate-100">
+      <Pencil className="size-4" />
+      Editar
+    </Link>
+  );
+}
 
 export default async function PatientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -60,7 +81,14 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
       <PageHeader
         title={`${patient.firstName} ${patient.lastName}`}
         description={patient.dni ?? undefined}
-        actions={patient.gdprConsent ? <Badge tone="emerald"><ShieldCheck className="size-3.5" />Consentimiento RGPD</Badge> : <Badge tone="rose">Sin consentimiento RGPD</Badge>}
+        actions={
+          <>
+            <span className="self-center">
+              {patient.gdprConsent ? <Badge tone="emerald"><ShieldCheck className="size-3.5" />Consentimiento RGPD</Badge> : <Badge tone="rose">Sin consentimiento RGPD</Badge>}
+            </span>
+            <LinkButton href={`/pacientes/${patient.id}/editar`} variant="secondary" icon={Pencil}>Editar ficha</LinkButton>
+          </>
+        }
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -79,7 +107,7 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
         <div className="space-y-6 lg:col-span-2">
           {/* Plantillas */}
           <Card>
-            <CardHeader title="Plantillas a medida" icon={Footprints} subtitle="Renovación cada 12 meses" />
+            <CardHeader title="Plantillas a medida" icon={Footprints} subtitle="Renovación cada 12 meses" action={<AddLink href={`/pacientes/${patient.id}/plantillas/nueva`}>Nuevas</AddLink>} />
             {patient.insoles.length === 0 ? (
               <EmptyState icon={Footprints} title="Sin plantillas registradas" />
             ) : (
@@ -92,6 +120,7 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
                         {i.shoreDensity && ` ${i.shoreDensity}º Shore`} · {insoleFinish[i.finish]}
                       </p>
                       <Badge tone={prescriptionStatus[i.status].tone}>{prescriptionStatus[i.status].label}</Badge>
+                      <EditLink href={`/pacientes/${patient.id}/plantillas/${i.id}`} />
                       {i.nextReviewAt && <Badge tone={i.nextReviewAt < new Date() ? "rose" : "slate"}>Revisión {formatDate(i.nextReviewAt)}</Badge>}
                     </div>
                     <div className="flex flex-wrap gap-1.5">
@@ -114,7 +143,7 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
 
           {/* Medias */}
           <Card>
-            <CardHeader title="Medias de compresión" icon={CalendarClock} subtitle="Renovación cada 6 meses" />
+            <CardHeader title="Medias de compresión" icon={CalendarClock} subtitle="Renovación cada 6 meses" action={<AddLink href={`/pacientes/${patient.id}/medias/nueva`}>Nuevas</AddLink>} />
             {patient.stockings.length === 0 ? (
               <EmptyState icon={CalendarClock} title="Sin medias registradas" />
             ) : (
@@ -124,6 +153,7 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium text-slate-800">{garmentType[s.garmentType]} · {compressionClass[s.compressionClass]}</p>
                       <Badge tone={prescriptionStatus[s.status].tone}>{prescriptionStatus[s.status].label}</Badge>
+                      <EditLink href={`/pacientes/${patient.id}/medias/${s.id}`} />
                       {s.isPublicHealth && <Badge tone="violet">Seguridad Social</Badge>}
                       {s.nextReviewAt && <Badge tone={s.nextReviewAt < new Date() ? "rose" : "slate"}>Revisión {formatDate(s.nextReviewAt)}</Badge>}
                     </div>
@@ -177,21 +207,20 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
           </Card>
 
           {/* Taller */}
-          {patient.workOrders.length > 0 && (
-            <Card>
-              <CardHeader title="Órdenes de taller" icon={Wrench} />
-              <ul className="divide-y divide-slate-100">
-                {patient.workOrders.map((o) => (
-                  <li key={o.id}>
-                    <Link href={`/taller/${o.id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-slate-50">
-                      <span><span className="font-mono text-sm text-slate-500">{o.code}</span> · {equipmentCategory[o.equipmentCategory]}</span>
-                      <Badge tone={workOrderStatus[o.status].tone}>{workOrderStatus[o.status].label}</Badge>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          )}
+          <Card>
+            <CardHeader title="Órdenes de taller" icon={Wrench} action={<AddLink href={`/taller/nueva?paciente=${patient.id}`}>Nueva</AddLink>} />
+            {patient.workOrders.length === 0 && <EmptyState icon={Wrench} title="Sin órdenes de taller" />}
+            <ul className="divide-y divide-slate-100">
+              {patient.workOrders.map((o) => (
+                <li key={o.id}>
+                  <Link href={`/taller/${o.id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-slate-50">
+                    <span><span className="font-mono text-sm text-slate-500">{o.code}</span> · {equipmentCategory[o.equipmentCategory]}</span>
+                    <Badge tone={workOrderStatus[o.status].tone}>{workOrderStatus[o.status].label}</Badge>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </Card>
         </div>
       </div>
     </>

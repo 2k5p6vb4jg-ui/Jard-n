@@ -1,5 +1,14 @@
-import { ComingSoon } from "@/components/ui/ComingSoon";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { PatientForm } from "@/components/patients/PatientForm";
+import { createPatient } from "../actions";
+
+export const metadata = { title: "Nuevo paciente" };
 
 export default function NewPatientPage() {
-  return <ComingSoon title="Nuevo paciente" text="Alta de paciente con datos personales y consentimiento RGPD." />;
+  return (
+    <>
+      <PageHeader title="Nuevo paciente" description="Los campos con * son obligatorios" />
+      <PatientForm action={createPatient} cancelHref="/pacientes" />
+    </>
+  );
 }

@@ -181,3 +181,27 @@ export const interventionType: Record<InterventionType, string> = {
   WARRANTY_CLAIM: "Garantía",
   RETURN: "Devolución",
 };
+
+export const insoleType: Record<import("@prisma/client").InsoleType, string> = {
+  DAILY: "Uso diario",
+  SPORT: "Deportiva",
+  DRESS: "Vestir (fina)",
+  DIABETIC: "Pie diabético",
+  CHILD: "Infantil",
+};
+
+export const knitType: Record<import("@prisma/client").KnitType, string> = {
+  CIRCULAR: "Tejido circular",
+  FLAT: "Tejido plano",
+};
+
+export const laborMode: Record<import("@prisma/client").LaborMode, string> = {
+  HOURLY: "Por horas (tarifa × tiempo)",
+  FIXED: "Precio cerrado",
+};
+
+export const side: Record<import("@prisma/client").Side, string> = {
+  BOTH: "Ambos",
+  LEFT: "Izquierdo",
+  RIGHT: "Derecho",
+};

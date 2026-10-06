@@ -1,4 +1,5 @@
-import { ScanBarcode, Search, ShieldCheck, ShieldOff } from "lucide-react";
+import Link from "next/link";
+import { ClipboardPlus, Pencil, Plus, ScanBarcode, Search, ShieldCheck, ShieldOff } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/dates";
 import { equipmentCategory, interventionType } from "@/lib/labels";
@@ -6,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { LinkButton } from "@/components/ui/Button";
 
 export const metadata = { title: "Trazabilidad" };
 
@@ -26,7 +28,7 @@ export default async function TraceabilityPage({ searchParams }: { searchParams:
 
   return (
     <>
-      <PageHeader title="Trazabilidad" description="Productos de alto valor por número de serie" />
+      <PageHeader title="Trazabilidad" description="Productos de alto valor por número de serie" actions={<LinkButton href="/trazabilidad/nuevo" icon={Plus}>Nuevo producto</LinkButton>} />
       <form className="relative mb-4">
         <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
         <input name="q" defaultValue={q} placeholder="Nº de serie, lote, marca o modelo…" className="field pl-12" />
@@ -65,6 +67,14 @@ export default async function TraceabilityPage({ searchParams }: { searchParams:
                     </li>
                   ))}
                 </ol>
+                <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+                  <Link href={`/trazabilidad/${p.id}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 font-medium text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50">
+                    <Pencil className="size-4" /> Editar
+                  </Link>
+                  <Link href={`/taller/nueva?producto=${p.id}${p.patientId ? `&paciente=${p.patientId}` : ""}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 font-medium text-teal-700 ring-1 ring-inset ring-teal-200 hover:bg-teal-50">
+                    <ClipboardPlus className="size-4" /> Entrada al taller
+                  </Link>
+                </div>
               </Card>
             );
           })}

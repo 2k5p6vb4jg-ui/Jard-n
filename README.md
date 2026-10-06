@@ -81,8 +81,18 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
 - Se recomienda cifrar el disco del PC (BitLocker / FileVault) y usar una Wi-Fi WPA2/3 sin acceso de invitados.
 - `AuditLog` registra exportaciones y copias; el borrado de un paciente elimina en cascada su historial clínico.
 
+## Qué se puede hacer ya
+
+- **Pacientes:** alta y edición (DNI/NIE con letra verificada, consentimiento RGPD con fecha).
+- **Plantillas y medias:** alta y edición completas. Al marcarlas como *Entregada* se programa la revisión
+  (12 / 6 meses) y se cierran los avisos de prescripciones anteriores del mismo tipo.
+- **Taller:** entrada de equipos (con código OT automático y datos rellenados desde trazabilidad),
+  avance/retroceso de estado, anulación, piezas con coste y PVP, cronómetro del técnico y tiempo manual,
+  desglose de costes en vivo. Al entregar un equipo con nº de serie, la intervención queda en su histórico.
+- **Trazabilidad:** alta y edición de productos; la garantía se calcula desde la fecha de entrega.
+
 ## Próxima fase
 
-Formularios de alta/edición (pacientes, plantillas, medias, órdenes), captura con cámara
-(`<input capture="environment">`, funciona sin HTTPS), cambio de estado de órdenes, cronómetro del técnico,
-generador de presupuestos en PDF y gestión de avisos (marcar como contactado / renovado).
+Documentos y fotos con la cámara (`<input capture="environment">`, funciona sin HTTPS), generador de
+presupuestos en PDF, gestión de avisos desde el panel (llamado / renovado / no renueva), ajustes editables
+y copia de seguridad que incluya los adjuntos.
