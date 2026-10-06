@@ -1,0 +1,708 @@
+// ============================================================================
+//  Ortopedia · Gestión clínica y de taller
+//  Base de datos local SQLite (prisma/dev.db) — los datos nunca salen del equipo.
+//
+//  Convenciones:
+//   - Importes monetarios en CÉNTIMOS (Int) para evitar errores de redondeo.
+//   - Medidas corporales en centímetros (Float); medidas del pie en milímetros.
+//   - Enumerados en inglés; las etiquetas en castellano viven en src/lib/labels.ts
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------------------------------
+//  ENUMERADOS
+// ----------------------------------------------------------------------------
+
+enum Side {
+  LEFT
+  RIGHT
+  BOTH
+}
+
+/// Estado de una prescripción clínica (plantilla o media).
+enum PrescriptionStatus {
+  PENDING // Tomadas medidas, pendiente de fabricar / pedir
+  IN_PRODUCTION // En fabricación (plantillas) o pedida a proveedor (medias)
+  READY // Lista para probar / entregar
+  DELIVERED // Entregada al paciente → empieza a contar la renovación
+  CANCELLED
+}
+
+/// Seguimiento del aviso de renovación (6 meses medias / 12 meses plantillas).
+enum RenewalStatus {
+  PENDING // Aún no se ha gestionado
+  CONTACTED // Se ha llamado / avisado al paciente
+  RENEWED // Se ha hecho una nueva prescripción
+  DISMISSED // El paciente no renueva
+}
+
+enum FootPathology {
+  FLAT_FOOT // Pie plano
+  CAVUS_FOOT // Pie cavo
+  PLANTAR_FASCIITIS // Fascitis plantar
+  HEEL_SPUR // Espolón calcáneo
+  METATARSALGIA
+  HALLUX_VALGUS // Juanete
+  MORTON_NEUROMA // Neuroma de Morton
+  PRONATION // Pie pronador
+  SUPINATION // Pie supinador
+  LEG_LENGTH_DISCREPANCY // Dismetría
+  DIABETIC_FOOT // Pie diabético
+  OTHER
+}
+
+enum InsoleMaterial {
+  EVA
+  POLYPROPYLENE // Polipropileno
+  RESIN // Resina
+  CORK // Corcho
+  CARBON_FIBER
+  PORON
+  LEATHER // Piel / forro
+  OTHER
+}
+
+enum InsoleFinish {
+  MICROPERFORATED // Microperforado
+  OPEN_CELL // Celdas abiertas
+  CLOSED_CELL // Celdas cerradas
+  LEATHER_LINED // Forrado en piel
+  TEXTILE_LINED // Forrado textil
+  NONE
+}
+
+enum InsoleType {
+  SPORT // Deportiva
+  DAILY // Calle / uso diario
+  DRESS // Vestir (fina)
+  DIABETIC // Descarga diabética
+  CHILD // Infantil
+}
+
+enum CorrectionType {
+  MEDIAL_WEDGE // Cuña pronadora/supinadora interna
+  LATERAL_WEDGE
+  ARCH_SUPPORT // Soporte arco longitudinal interno
+  RETROCAPITAL_BAR // Barra retrocapital
+  METATARSAL_PAD // Oliva / almohadilla metatarsal
+  HEEL_CUP // Taloneta / copa de talón
+  HEEL_LIFT // Alza de talón
+  HEEL_SPUR_RELIEF // Descarga de espolón
+  FOREFOOT_RELIEF // Descarga antepié
+  OTHER
+}
+
+enum CompressionClass {
+  CCL1 // 18–21 mmHg
+  CCL2 // 23–32 mmHg
+  CCL3 // 34–46 mmHg
+  CCL4 // > 49 mmHg
+}
+
+enum GarmentType {
+  KNEE_HIGH // Media corta (A-D)
+  THIGH_HIGH // Media a muslo (A-G)
+  THIGH_HIGH_SILICONE // Media a muslo con blonda de silicona
+  PANTYHOSE // Panty (A-T)
+  MATERNITY_PANTYHOSE // Panty premamá
+  ARM_SLEEVE // Manguito (linfedema)
+  OTHER
+}
+
+enum KnitType {
+  CIRCULAR // Tejido circular (serie / medida)
+  FLAT // Tejido plano (linfedema, medida)
+}
+
+enum DocumentType {
+  GAIT_STUDY // Estudio digital de la pisada
+  FOOTPRINT_PHOTO // Foto de huella física (pedigrafía)
+  PRESCRIPTION // Receta médica / Seguridad Social
+  MEDICAL_REPORT // Informe médico
+  CONSENT // Consentimiento informado / RGPD
+  PHOTO // Foto clínica general
+  OTHER
+}
+
+enum DocumentSource {
+  UPLOAD // Archivo subido
+  CAMERA // Capturado con la cámara del móvil/tablet
+}
+
+enum EquipmentCategory {
+  MANUAL_WHEELCHAIR // Silla de ruedas manual
+  ELECTRIC_WHEELCHAIR // Silla de ruedas eléctrica
+  MOBILITY_SCOOTER // Scooter de movilidad
+  PATIENT_LIFT // Grúa de traslado
+  WALKER // Andador
+  ORTHOSIS // Órtesis
+  PROSTHESIS // Prótesis
+  MOTOR // Motor / unidad de tracción
+  OTHER
+}
+
+enum ServiceType {
+  GENERAL_REPAIR // Reparación general
+  PREVENTIVE_MAINTENANCE // Mantenimiento preventivo
+  BATTERY_REPLACEMENT // Cambio de baterías
+  CLEANING_DISINFECTION // Limpieza y desinfección
+  CUSTOM_ADJUSTMENT // Ajustes a medida
+  WARRANTY // Intervención en garantía
+}
+
+/// Flujo de la orden de trabajo:
+/// RECEIVED ➔ DIAGNOSIS ➔ QUOTED ➔ IN_REPAIR ➔ READY ➔ DELIVERED (CANCELLED si se rechaza)
+enum WorkOrderStatus {
+  RECEIVED // Entrada
+  DIAGNOSIS // Diagnóstico
+  QUOTED // Presupuestado
+  IN_REPAIR // En reparación
+  READY // Listo para entregar
+  DELIVERED // Entregado
+  CANCELLED // Anulado / presupuesto rechazado
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum LaborMode {
+  HOURLY // Tarifa por hora × horas registradas
+  FIXED // Mano de obra a precio cerrado
+}
+
+enum PartCategory {
+  RESIN // Resinas
+  EVA
+  THERMOPLASTIC // Termoplásticos
+  BATTERY // Baterías
+  MOTOR // Motores
+  WHEEL // Ruedas / neumáticos / cámaras
+  SPARE_PART // Recambios
+  UPHOLSTERY // Tapicería / cojines
+  ELECTRONICS // Joystick, centralitas, cableado
+  CONSUMABLE // Consumibles (adhesivos, tornillería…)
+  OTHER
+}
+
+enum QuoteStatus {
+  DRAFT // Borrador
+  SENT // Entregado al cliente
+  ACCEPTED // Aceptado
+  REJECTED // Rechazado
+  EXPIRED // Caducado
+}
+
+enum InterventionType {
+  DELIVERY // Entrega inicial al paciente
+  INSPECTION // Revisión
+  REPAIR // Reparación
+  MAINTENANCE // Mantenimiento
+  ADJUSTMENT // Ajuste
+  WARRANTY_CLAIM // Reclamación en garantía
+  RETURN // Devolución / retirada
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  VIEW
+  EXPORT
+  BACKUP
+}
+
+// ----------------------------------------------------------------------------
+//  CONFIGURACIÓN DEL NEGOCIO (fila única id = 1)
+// ----------------------------------------------------------------------------
+
+model Settings {
+  id                     Int      @id @default(1)
+  businessName           String
+  legalName              String?
+  taxId                  String? // CIF / NIF
+  healthLicense          String? // Nº de licencia sanitaria de establecimiento
+  address                String?
+  city                   String?
+  postalCode             String?
+  province               String?
+  phone                  String?
+  email                  String?
+  website                String?
+  logoPath               String?
+  defaultHourlyRateCents Int      @default(3500)
+  defaultTaxRate         Float    @default(21) // IVA %
+  quoteValidityDays      Int      @default(30)
+  quoteLegalFooter       String? // Pie legal de presupuestos (RGPD, condiciones…)
+  insoleRenewalMonths    Int      @default(12)
+  stockingRenewalMonths  Int      @default(6)
+  renewalWarningDays     Int      @default(30) // Avisar X días antes de vencer
+  updatedAt              DateTime @updatedAt
+}
+
+// ----------------------------------------------------------------------------
+//  MÓDULO 1 · CRM E HISTORIAL CLÍNICO
+// ----------------------------------------------------------------------------
+
+model Patient {
+  id             String    @id @default(cuid())
+  firstName      String
+  lastName       String
+  dni            String?   @unique // DNI / NIE
+  birthDate      DateTime?
+  phone          String?
+  phoneAlt       String?
+  email          String?
+  address        String?
+  city           String?
+  postalCode     String?
+  healthCardNo   String? // Nº tarjeta sanitaria (SIP / TSI)
+  notes          String? // Observaciones generales
+  // RGPD
+  gdprConsent    Boolean   @default(false)
+  gdprConsentAt  DateTime?
+  marketingOptIn Boolean   @default(false)
+  archivedAt     DateTime? // Baja lógica (derecho de supresión se ejecuta con borrado real)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  insoles    InsolePrescription[]
+  stockings  CompressionStocking[]
+  documents  ClinicalDocument[]
+  workOrders WorkOrder[]
+  products   TrackedProduct[]
+
+  @@index([lastName, firstName])
+  @@index([phone])
+}
+
+/// Especialidad 1 · Plantillas a medida
+model InsolePrescription {
+  id        String  @id @default(cuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  insoleType InsoleType @default(DAILY)
+  side       Side       @default(BOTH)
+
+  // Diagnóstico
+  pathologies    InsolePathology[]
+  diagnosisNotes String?
+  prescribedBy   String? // Podólogo / traumatólogo que deriva
+
+  // Material
+  material     InsoleMaterial  @default(EVA)
+  shoreDensity Int? // Densidad EVA en grados Shore A (p. ej. 35, 45, 55)
+  baseMaterial InsoleMaterial?
+  baseDensity  Int?
+  finish       InsoleFinish    @default(NONE)
+  thicknessMm  Float?
+
+  // Medidas (mm salvo talla)
+  shoeSize          Float? // Talla europea
+  footLengthLeftMm  Float?
+  footLengthRightMm Float?
+  footWidthLeftMm   Float?
+  footWidthRightMm  Float?
+  archHeightLeftMm  Float?
+  archHeightRightMm Float?
+  heelLiftMm        Float? // Alza compensación dismetría
+
+  // Corrección
+  corrections    InsoleCorrection[]
+  technicalNotes String?
+
+  // Ciclo de vida
+  status        PrescriptionStatus @default(PENDING)
+  priceCents    Int?
+  measuredAt    DateTime           @default(now())
+  deliveredAt   DateTime?
+  /// deliveredAt + Settings.insoleRenewalMonths (12 meses). Indexado para el panel.
+  nextReviewAt  DateTime?
+  renewalStatus RenewalStatus      @default(PENDING)
+  renewalNote   String?
+
+  documents ClinicalDocument[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([nextReviewAt, renewalStatus])
+}
+
+model InsolePathology {
+  id        String             @id @default(cuid())
+  insoleId  String
+  insole    InsolePrescription @relation(fields: [insoleId], references: [id], onDelete: Cascade)
+  pathology FootPathology
+  side      Side               @default(BOTH)
+  notes     String?
+
+  @@unique([insoleId, pathology, side])
+}
+
+model InsoleCorrection {
+  id       String             @id @default(cuid())
+  insoleId String
+  insole   InsolePrescription @relation(fields: [insoleId], references: [id], onDelete: Cascade)
+  type     CorrectionType
+  side     Side               @default(BOTH)
+  valueMm  Float? // Altura / grosor del elemento
+  notes    String?
+
+  @@index([insoleId])
+}
+
+/// Especialidad 2 · Medias de compresión.
+/// Puntos de medida estándar RAL-GZ 387: perímetros cB…cT y longitudes lA-x.
+model CompressionStocking {
+  id        String  @id @default(cuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  compressionClass CompressionClass
+  garmentType      GarmentType
+  knitType         KnitType         @default(CIRCULAR)
+  side             Side             @default(BOTH)
+  madeToMeasure    Boolean          @default(false)
+  brand            String?
+  model            String?
+  color            String?
+  openToe          Boolean          @default(false) // Puntera abierta
+  diagnosis        String? // Insuficiencia venosa, linfedema, post-quirúrgico…
+
+  // Perímetros (cm)
+  cB  Float? // Tobillo
+  cB1 Float? // Transición tobillo-gemelo
+  cC  Float? // Gemelo (máx.)
+  cD  Float? // Bajo rodilla
+  cE  Float? // Rodilla
+  cF  Float? // Mitad muslo
+  cG  Float? // Ingle / raíz muslo
+  cH  Float? // Cadera (panty)
+  cT  Float? // Cintura (panty)
+  cY  Float? // Talón en diagonal
+
+  // Longitudes desde el suelo (cm)
+  lAB1 Float?
+  lAC  Float?
+  lAD  Float?
+  lAE  Float?
+  lAF  Float?
+  lAG  Float?
+  lAT  Float?
+
+  footLengthCm     Float?
+  measurementNotes String?
+
+  // Prescripción médica / Seguridad Social
+  prescribingDoctor   String?
+  doctorLicenseNo     String? // Nº colegiado
+  prescriptionNumber  String? // Nº de receta / orden de dispensación
+  prescriptionDate    DateTime?
+  isPublicHealth      Boolean   @default(false) // Financiado por Seguridad Social
+  publicHealthCode    String? // Código de producto en catálogo ortoprotésico
+  patientContribCents Int? // Aportación del usuario
+
+  // Ciclo de vida
+  status        PrescriptionStatus @default(PENDING)
+  priceCents    Int?
+  measuredAt    DateTime           @default(now())
+  deliveredAt   DateTime?
+  /// deliveredAt + Settings.stockingRenewalMonths (6 meses).
+  nextReviewAt  DateTime?
+  renewalStatus RenewalStatus      @default(PENDING)
+  renewalNote   String?
+
+  documents ClinicalDocument[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([nextReviewAt, renewalStatus])
+}
+
+/// Estudios de pisada, fotos de huellas, recetas… guardados en /uploads/<patientId>/
+model ClinicalDocument {
+  id        String  @id @default(cuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  // Vínculo opcional a la prescripción a la que pertenece
+  insoleId   String?
+  insole     InsolePrescription?  @relation(fields: [insoleId], references: [id], onDelete: SetNull)
+  stockingId String?
+  stocking   CompressionStocking? @relation(fields: [stockingId], references: [id], onDelete: SetNull)
+
+  type         DocumentType
+  source       DocumentSource @default(UPLOAD)
+  title        String
+  description  String?
+  originalName String
+  /// Ruta relativa dentro de UPLOADS_DIR, p. ej. "clxyz123/2026-10-06_estudio-pisada.pdf"
+  storagePath  String         @unique
+  mimeType     String
+  sizeBytes    Int
+  sha256       String? // Integridad del archivo
+  takenAt      DateTime? // Fecha del estudio / foto
+
+  createdAt DateTime @default(now())
+
+  @@index([patientId, type])
+}
+
+// ----------------------------------------------------------------------------
+//  MÓDULO 2 · TALLER, REPARACIONES Y COSTES
+// ----------------------------------------------------------------------------
+
+model Technician {
+  id              String  @id @default(cuid())
+  name            String
+  hourlyRateCents Int? // Si es null se usa Settings.defaultHourlyRateCents
+  active          Boolean @default(true)
+  pin             String? // PIN corto opcional para fichar desde la tablet
+
+  workOrders    WorkOrder[]
+  timeEntries   TimeEntry[]
+  interventions ProductIntervention[]
+
+  createdAt DateTime @default(now())
+}
+
+model WorkOrder {
+  id   String @id @default(cuid())
+  /// Código legible: OT-2026-0001
+  code String @unique
+
+  patientId     String?
+  patient       Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  // Cliente no paciente (residencia, mutua, particular sin ficha clínica)
+  customerName  String?
+  customerPhone String?
+
+  // Equipo
+  productId         String?
+  product           TrackedProduct?   @relation(fields: [productId], references: [id], onDelete: SetNull)
+  equipmentCategory EquipmentCategory
+  equipmentBrand    String?
+  equipmentModel    String?
+  serialNumber      String? // Copia libre si el equipo no está en trazabilidad
+  accessories       String? // Cargador, cojín, reposapiés…
+
+  serviceType   ServiceType
+  status        WorkOrderStatus @default(RECEIVED)
+  priority      Priority        @default(NORMAL)
+  underWarranty Boolean         @default(false)
+
+  reportedIssue String // Avería según el cliente
+  diagnosis     String? // Diagnóstico técnico
+  workDone      String? // Trabajo realizado
+  internalNotes String?
+
+  technicianId String?
+  technician   Technician? @relation(fields: [technicianId], references: [id], onDelete: SetNull)
+
+  // Mano de obra
+  laborMode       LaborMode @default(HOURLY)
+  laborRateCents  Int? // Tarifa/hora aplicada (snapshot)
+  laborFixedCents Int? // Si laborMode = FIXED
+  discountPercent Float     @default(0)
+  taxRate         Float     @default(21)
+
+  // Fechas
+  receivedAt  DateTime  @default(now())
+  promisedAt  DateTime? // Fecha comprometida
+  completedAt DateTime?
+  deliveredAt DateTime?
+
+  parts         WorkOrderPart[]
+  timeEntries   TimeEntry[]
+  statusHistory WorkOrderStatusChange[]
+  quotes        Quote[]
+  interventions ProductIntervention[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([patientId])
+  @@index([productId])
+}
+
+/// Piezas y materiales consumidos en la orden.
+model WorkOrderPart {
+  id          String    @id @default(cuid())
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  category       PartCategory
+  reference      String? // Ref. proveedor
+  description    String
+  quantity       Float        @default(1)
+  unit           String       @default("ud") // ud, m, m², kg, l
+  unitCostCents  Int          @default(0) // Coste de compra (margen interno)
+  unitPriceCents Int // Precio de venta al cliente
+
+  createdAt DateTime @default(now())
+
+  @@index([workOrderId])
+}
+
+/// Registro de tiempo del técnico (mano de obra por horas).
+model TimeEntry {
+  id           String      @id @default(cuid())
+  workOrderId  String
+  workOrder    WorkOrder   @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  technicianId String?
+  technician   Technician? @relation(fields: [technicianId], references: [id], onDelete: SetNull)
+
+  startedAt   DateTime
+  endedAt     DateTime? // null = cronómetro en marcha
+  minutes     Int? // Calculado al cerrar o introducido a mano
+  description String?
+
+  @@index([workOrderId])
+}
+
+model WorkOrderStatusChange {
+  id          String           @id @default(cuid())
+  workOrderId String
+  workOrder   WorkOrder        @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  fromStatus  WorkOrderStatus?
+  toStatus    WorkOrderStatus
+  note        String?
+  changedAt   DateTime         @default(now())
+
+  @@index([workOrderId, changedAt])
+}
+
+/// Presupuesto formal (PDF). Guarda una instantánea de importes por si cambia la OT.
+model Quote {
+  id          String      @id @default(cuid())
+  /// PRES-2026-0001
+  number      String      @unique
+  workOrderId String
+  workOrder   WorkOrder   @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  status      QuoteStatus @default(DRAFT)
+
+  issuedAt   DateTime @default(now())
+  validUntil DateTime
+
+  partsCents    Int
+  laborCents    Int
+  discountCents Int   @default(0)
+  subtotalCents Int // Base imponible
+  taxRate       Float
+  taxCents      Int
+  totalCents    Int
+
+  notes      String?
+  /// Líneas congeladas en JSON (piezas + mano de obra) para reimprimir idéntico.
+  linesJson  String
+  pdfPath    String? // Copia del PDF en uploads/quotes/
+  acceptedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([workOrderId])
+}
+
+// ----------------------------------------------------------------------------
+//  MÓDULO 3 · TRAZABILIDAD DE PRODUCTOS DE ALTO VALOR
+// ----------------------------------------------------------------------------
+
+model TrackedProduct {
+  id             String            @id @default(cuid())
+  serialNumber   String            @unique // Obligatorio
+  lotNumber      String? // Lote de fabricación
+  category       EquipmentCategory
+  brand          String
+  model          String
+  description    String?
+  udi            String? // Identificador único de dispositivo (MDR)
+  supplier       String?
+  manufacturedAt DateTime?
+
+  patientId String?
+  patient   Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+
+  purchasePriceCents Int?
+  salePriceCents     Int?
+  isPublicHealth     Boolean @default(false)
+
+  deliveredAt    DateTime?
+  warrantyMonths Int       @default(24)
+  /// deliveredAt + warrantyMonths
+  warrantyUntil  DateTime?
+  nextServiceAt  DateTime? // Próximo mantenimiento preventivo
+  notes          String?
+
+  interventions ProductIntervention[]
+  workOrders    WorkOrder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([warrantyUntil])
+}
+
+/// Histórico de intervenciones ligado al número de serie.
+model ProductIntervention {
+  id            String           @id @default(cuid())
+  productId     String
+  product       TrackedProduct   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type          InterventionType
+  date          DateTime         @default(now())
+  description   String
+  underWarranty Boolean          @default(false)
+
+  workOrderId  String?
+  workOrder    WorkOrder?  @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  technicianId String?
+  technician   Technician? @relation(fields: [technicianId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([productId, date])
+}
+
+// ----------------------------------------------------------------------------
+//  MÓDULO 4 · AUDITORÍA (RGPD) Y COPIAS DE SEGURIDAD
+// ----------------------------------------------------------------------------
+
+/// Registro de accesos/cambios a datos de salud (art. 32 RGPD — trazabilidad).
+model AuditLog {
+  id        String      @id @default(cuid())
+  action    AuditAction
+  entity    String // "Patient", "ClinicalDocument", "Backup"…
+  entityId  String?
+  summary   String?
+  ip        String? // IP del dispositivo de la red local
+  userAgent String?
+  createdAt DateTime    @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+model BackupRecord {
+  id        String   @id @default(cuid())
+  fileName  String
+  sizeBytes Int
+  createdAt DateTime @default(now())
+}

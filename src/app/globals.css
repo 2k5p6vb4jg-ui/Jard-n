@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-slate-50 text-slate-800 antialiased;
+}
+
+/* Objetivos táctiles cómodos en tablet/móvil */
+@layer components {
+  .touch-target {
+    @apply min-h-12 min-w-12;
+  }
+  .field {
+    @apply block w-full min-h-12 rounded-xl border border-slate-300 bg-white px-4 text-base text-slate-800
+      shadow-sm outline-none transition placeholder:text-slate-400
+      focus:border-teal-500 focus:ring-4 focus:ring-teal-500/15;
+  }
+  .field-label {
+    @apply mb-1.5 block text-sm font-medium text-slate-600;
+  }
+}

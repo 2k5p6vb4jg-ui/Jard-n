@@ -1,0 +1,36 @@
+import type { Metadata, Viewport } from "next";
+import "./globals.css";
+import { prisma } from "@/lib/prisma";
+import { BottomNav, Sidebar } from "@/components/layout/Navigation";
+
+export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: { default: "Ortopedia · Gestión", template: "%s · Ortopedia" },
+  description: "Gestión clínica y de taller para ortopedia (uso local).",
+  robots: { index: false, follow: false },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#0d9488",
+};
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const settings = await prisma.settings.findUnique({ where: { id: 1 }, select: { businessName: true } });
+
+  return (
+    <html lang="es">
+      <body>
+        <div className="flex min-h-dvh">
+          <Sidebar businessName={settings?.businessName ?? "Ortopedia"} />
+          <main className="min-w-0 flex-1 px-4 pb-28 pt-6 sm:px-8 lg:pb-10 lg:pt-8">
+            <div className="mx-auto max-w-7xl">{children}</div>
+          </main>
+        </div>
+        <BottomNav />
+      </body>
+    </html>
+  );
+}
