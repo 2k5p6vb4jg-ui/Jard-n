@@ -3,7 +3,7 @@ import "./globals.css";
 import { prisma } from "@/lib/prisma";
 import { ensureDailyBackup } from "@/lib/backup";
 import { ensureSettings } from "@/lib/settings";
-import { BottomNav, Sidebar } from "@/components/layout/Navigation";
+import { BottomNav, MobileHeader, Sidebar } from "@/components/layout/Navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -25,14 +25,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // Copia diaria en segundo plano (no bloquea la carga de la página)
   ensureDailyBackup();
 
+  const businessName = settings?.businessName ?? "Jardón Ortopedia";
+  const logoUrl = settings?.logoPath ? `/api/logo?v=${settings.updatedAt.getTime()}` : null;
+
   return (
     <html lang="es">
       <body>
         <div className="flex min-h-dvh">
-          <Sidebar businessName={settings?.businessName ?? "Jardón Ortopedia"} logoUrl={settings?.logoPath ? `/api/logo?v=${settings.updatedAt.getTime()}` : null} hasPin={!!settings?.pinHash} />
-          <main className="min-w-0 flex-1 px-4 pb-28 pt-6 sm:px-8 lg:pb-10 lg:pt-8">
-            <div className="mx-auto max-w-7xl">{children}</div>
-          </main>
+          <Sidebar businessName={businessName} logoUrl={logoUrl} hasPin={!!settings?.pinHash} />
+          <div className="min-w-0 flex-1">
+            <MobileHeader businessName={businessName} logoUrl={logoUrl} />
+            <main className="px-4 pb-28 pt-5 sm:px-8 lg:pb-10 lg:pt-8">
+              <div className="mx-auto max-w-7xl">{children}</div>
+            </main>
+          </div>
         </div>
         <BottomNav />
       </body>

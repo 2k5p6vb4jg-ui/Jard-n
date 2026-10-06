@@ -42,17 +42,19 @@ reinicio automático si se cierra) y abre el puerto 3000 en el cortafuegos **sol
 Para arrancarla a mano basta con hacer doble clic en `scripts/windows/iniciar.bat`.
 El registro de funcionamiento queda en `logs/servidor.log`.
 
-### Probar con datos ficticios
+### Probar con datos ficticios y después empezar de cero
 
 ```bash
-npm run demo     # ⚠️ BORRA todos los datos y carga pacientes y órdenes de ejemplo
-npm run dev      # modo desarrollo
+npm run demo     # ⚠️ BORRA todos los datos y carga pacientes, órdenes y 12 meses de histórico de ejemplo
+npm start        # pruebe la app en el ordenador y en el móvil
+npm run vaciar   # deja la app vacía (pide escribir VACIAR; los datos anteriores se apartan a backups/)
 ```
 
 | Script | Uso |
 | --- | --- |
 | `npm start` | Aplica las actualizaciones pendientes de la base de datos (sin borrar nada) y arranca |
 | `npm run demo` / `npm run db:seed` | Datos ficticios — **borran los datos existentes** |
+| `npm run vaciar` | Deja la app vacía para empezar con datos reales (mueve los actuales a `backups/`) |
 | `npm run db:migrate` | (Desarrollo) crea una migración tras cambiar `schema.prisma` |
 | `npm run db:studio` | Explorador visual de la base de datos |
 | `npm run lint` | Comprobación de tipos |
@@ -143,6 +145,13 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
 - **Acceso con PIN** (4-8 cifras, guardado cifrado): teclado numérico grande, sesión que caduca tras las horas
   configuradas, bloqueo tras 5 intentos fallidos por dispositivo, botón «Bloquear» y cierre de sesión en todos
   los dispositivos al cambiar el PIN. Protege páginas, acciones, PDF, fotos y copias.
+
+- **Resguardo de entrada** imprimible (botón «Resguardo» en cada orden): A4 con copia para el cliente y para
+  el taller, con datos del equipo, accesorios, avería, condiciones y firmas.
+- **Búsqueda global** (barra lateral o lupa en el móvil): pacientes, órdenes, números de serie y presupuestos,
+  sin importar tildes ni mayúsculas («alvarez» encuentra «Álvarez»).
+- **Estadísticas**: facturación mensual del taller y de plantillas/medias, unidades entregadas, tiempo medio en
+  taller, presupuestos aceptados y equipos por categoría (cifras orientativas, no sustituyen a la contabilidad).
 
 ![Presupuesto](docs/capturas/presupuesto-pdf.png)
 

@@ -441,6 +441,56 @@ async function main() {
     }
   }
 
+  // ── Histórico de 12 meses (para que las estadísticas tengan datos) ──────
+  // Pseudoaleatorio con semilla fija: el resultado es siempre el mismo
+  let seedN = 42;
+  const rnd = () => ((seedN = (seedN * 1103515245 + 12345) % 2147483648) / 2147483648);
+  const pick = <T,>(a: T[]) => a[Math.floor(rnd() * a.length)];
+  const historicNames = [
+    ["Rosa", "Navarro Peris"], ["José Luis", "Ortiz Martí"], ["Amparo", "Soler Ribes"], ["Vicente", "Puig Camps"],
+    ["Pilar", "Gómez Sanchis"], ["Enrique", "Llopis Tormo"], ["Dolores", "Ferrer Vila"], ["Salvador", "Mas Bonet"],
+  ];
+  const historic = await Promise.all(
+    historicNames.map(([firstName, lastName], i) =>
+      prisma.patient.create({ data: { firstName, lastName, dni: dni(10000000 + i * 1234567), phone: `6${String(10000000 + i * 1111111).slice(0, 8)}`, city: pick(["Valencia", "Paterna", "Torrent", "Mislata"]), gdprConsent: true, gdprConsentAt: daysAgo(380), createdAt: daysAgo(30 + i * 40) } }),
+    ),
+  );
+  const categories = ["MANUAL_WHEELCHAIR", "ELECTRIC_WHEELCHAIR", "MOBILITY_SCOOTER", "WALKER", "PATIENT_LIFT", "ORTHOSIS"] as const;
+  const services = ["GENERAL_REPAIR", "PREVENTIVE_MAINTENANCE", "BATTERY_REPLACEMENT", "CLEANING_DISINFECTION", "CUSTOM_ADJUSTMENT"] as const;
+  for (let monthsAgo = 11; monthsAgo >= 0; monthsAgo--) {
+    const n = 2 + Math.floor(rnd() * 4) + (monthsAgo < 4 ? 1 : 0);
+    for (let k = 0; k < n; k++) {
+      const delivered = daysAgo(monthsAgo * 30 + 2 + Math.floor(rnd() * 25));
+      if (delivered > now) continue;
+      const received = new Date(delivered.getTime() - (2 + Math.floor(rnd() * 8)) * DAY);
+      const category = pick([...categories]);
+      const minutes = 30 + Math.floor(rnd() * 150);
+      await prisma.workOrder.create({
+        data: {
+          code: code(), patientId: pick(historic).id, equipmentCategory: category, serviceType: pick([...services]),
+          status: "DELIVERED", reportedIssue: "Revisión / reparación (histórico de ejemplo).", workDone: "Trabajo completado.",
+          technicianId: pick([tecMario.id, tecLucia.id]), laborRateCents: 3800, receivedAt: received, completedAt: delivered, deliveredAt: delivered,
+          parts: { create: [{ category: "SPARE_PART", description: "Recambio (ejemplo)", quantity: 1 + Math.floor(rnd() * 2), unitCostCents: 1500, unitPriceCents: 2500 + Math.floor(rnd() * 9000) }] },
+          timeEntries: { create: { technicianId: tecMario.id, startedAt: received, endedAt: new Date(received.getTime() + minutes * 60_000), minutes } },
+          statusHistory: { create: [{ toStatus: "RECEIVED", changedAt: received }, { fromStatus: "READY", toStatus: "DELIVERED", changedAt: delivered }] },
+        },
+      });
+    }
+    // Plantillas y medias entregadas ese mes (avisos ya gestionados para no llenar el panel)
+    for (let k = 0; k < 1 + Math.floor(rnd() * 3); k++) {
+      const deliveredAt = daysAgo(monthsAgo * 30 + 3 + Math.floor(rnd() * 24));
+      await prisma.insolePrescription.create({
+        data: { patientId: pick(historic).id, material: "EVA", shoreDensity: pick([35, 45, 55]), finish: pick(["MICROPERFORATED", "OPEN_CELL", "TEXTILE_LINED"]), status: "DELIVERED", measuredAt: new Date(deliveredAt.getTime() - 10 * DAY), deliveredAt, nextReviewAt: addMonths(deliveredAt, 12), renewalStatus: "RENEWED", priceCents: pick([12000, 14500, 16500, 18000]) },
+      });
+    }
+    for (let k = 0; k < 1 + Math.floor(rnd() * 4); k++) {
+      const deliveredAt = daysAgo(monthsAgo * 30 + 3 + Math.floor(rnd() * 24));
+      await prisma.compressionStocking.create({
+        data: { patientId: pick(historic).id, compressionClass: pick(["CCL1", "CCL2"]), garmentType: pick(["KNEE_HIGH", "THIGH_HIGH_SILICONE", "PANTYHOSE"]), status: "DELIVERED", measuredAt: new Date(deliveredAt.getTime() - 7 * DAY), deliveredAt, nextReviewAt: addMonths(deliveredAt, 6), renewalStatus: "RENEWED", priceCents: pick([5900, 6800, 7400]) },
+      });
+    }
+  }
+
   const counts = {
     pacientes: await prisma.patient.count(),
     plantillas: await prisma.insolePrescription.count(),

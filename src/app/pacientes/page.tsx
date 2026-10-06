@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ChevronRight, Search, ShieldCheck, UserPlus, Users } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { searchPatients } from "@/lib/search";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
@@ -11,22 +11,7 @@ export const metadata = { title: "Pacientes" };
 
 export default async function PatientsPage({ searchParams }: { searchParams: Promise<{ q?: string; eliminado?: string }> }) {
   const { q = "", eliminado } = await searchParams;
-  const term = q.trim();
-  const patients = await prisma.patient.findMany({
-    where: {
-      archivedAt: null,
-      ...(term && {
-        OR: [
-          { firstName: { contains: term } },
-          { lastName: { contains: term } },
-          { dni: { contains: term.toUpperCase() } },
-          { phone: { contains: term } },
-        ],
-      }),
-    },
-    include: { _count: { select: { insoles: true, stockings: true, documents: true, workOrders: true } } },
-    orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-  });
+  const patients = await searchPatients(q);
 
   return (
     <>

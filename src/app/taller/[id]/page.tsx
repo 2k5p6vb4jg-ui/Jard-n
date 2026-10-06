@@ -15,6 +15,7 @@ import {
   Pencil,
   Play,
   Plus,
+  Printer,
   Receipt,
   Send,
   ThumbsDown,
@@ -105,7 +106,14 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
       <PageHeader
         title={`${order.code} · ${equipmentCategory[order.equipmentCategory]}`}
         description={[order.equipmentBrand, order.equipmentModel, order.serialNumber && `S/N ${order.serialNumber}`].filter(Boolean).join(" · ")}
-        actions={<LinkButton href={`/taller/${id}/editar`} variant="secondary" icon={Pencil}>Editar</LinkButton>}
+        actions={
+          <>
+            <a href={`/api/taller/${id}/resguardo`} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-5 font-medium text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
+              <Printer className="size-5" /> Resguardo
+            </a>
+            <LinkButton href={`/taller/${id}/editar`} variant="secondary" icon={Pencil}>Editar</LinkButton>
+          </>
+        }
       />
 
       {/* ── Estado ─────────────────────────────────────────────────────── */}

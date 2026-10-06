@@ -12,7 +12,8 @@
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio",
-    "demo": "prisma migrate deploy && prisma db seed"
+    "demo": "prisma migrate deploy && prisma db seed",
+    "vaciar": "node scripts/vaciar.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

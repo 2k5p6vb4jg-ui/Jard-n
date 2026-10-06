@@ -3,7 +3,7 @@ import { audit } from "@/lib/audit";
 import { equipmentCategory, serviceType } from "@/lib/labels";
 import { parseQuoteLines } from "@/lib/quotes";
 import { renderQuotePdf } from "@/lib/pdf/quotePdf";
-import { readUpload } from "@/lib/storage";
+import { loadLogo } from "@/lib/branding";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,14 +17,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const o = quote.workOrder;
   const p = o.patient;
 
-  let logo: { bytes: Uint8Array; type: "png" | "jpg" } | null = null;
-  if (settings?.logoPath) {
-    try {
-      logo = { bytes: await readUpload(settings.logoPath), type: settings.logoPath.endsWith(".png") ? "png" : "jpg" };
-    } catch {
-      logo = null; // archivo borrado a mano: se genera sin logo
-    }
-  }
+  const logo = await loadLogo(settings?.logoPath);
 
   const bytes = await renderQuotePdf({
     settings,
