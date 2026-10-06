@@ -44,6 +44,10 @@ echo        (los avisos amarillos "warn" son normales)
 call npm install
 if errorlevel 1 goto :error
 
+rem Genera el conector de la base de datos (en algunos Windows no se hace solo)
+call npx prisma generate
+if errorlevel 1 goto :error
+
 rem --- 4. Configuracion -----------------------------------------------------
 if not exist ".env" copy ".env.example" ".env" >nul
 echo  [ok] Configuracion creada.
