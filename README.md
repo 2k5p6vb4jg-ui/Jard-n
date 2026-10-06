@@ -11,23 +11,21 @@ Ningún dato sale del equipo (sin servicios en la nube, sin telemetría).
 
 ![Panel](docs/capturas/panel-escritorio.png)
 
-## Instalación en el ordenador de la tienda
+## Instalación en el ordenador de la tienda (Windows)
 
-1. Instale **Node.js LTS** desde <https://nodejs.org> (22.13 o superior).
-2. Descargue esta carpeta (o `git clone`) y, dentro de ella, abra una terminal:
+1. Instale **Node.js LTS** desde <https://nodejs.org/es> (siguiente, siguiente, finalizar) y **reinicie** el ordenador.
+2. Descomprima el ZIP de la aplicación (clic derecho → **Extraer todo**), por ejemplo en `C:\JardonOrtopedia`.
+3. Dentro de esa carpeta, haga **doble clic en `INSTALAR.bat`**. Descarga lo necesario, pregunta si quiere
+   datos de prueba, prepara la app, la arranca y abre el navegador.
+   - Si Windows muestra «Windows protegió su PC», pulse **Más información → Ejecutar de todas formas**.
+   - Si aparece el aviso del **Firewall**, marque solo **Redes privadas** y pulse **Permitir acceso**.
+4. Los demás días: **doble clic en `ARRANCAR.bat`** (o configure el arranque automático, abajo).
 
-```bash
-npm install
-cp .env.example .env          # en Windows: copy .env.example .env
-npm run build
-npm start                     # crea la base de datos vacía y abre la app en 0.0.0.0:3000
-```
+En la ventana negra aparece la dirección para la Wi-Fi, p. ej. `http://192.168.1.40:3000`: ábrala desde la
+tablet, el móvil u otros ordenadores. **Solo un ordenador ejecuta la app** (el que guarda los datos); los demás
+dispositivos usan el navegador. La red de la tienda debe estar marcada como **Privada** en Windows.
 
-3. Abra <http://localhost:3000>, vaya a **Ajustes** y rellene los datos de la tienda, los técnicos, el logo
-   y **active el PIN**. La app empieza vacía: no contiene datos de prueba.
-
-Al arrancar se muestran las direcciones para la Wi-Fi, p. ej. `http://192.168.1.40:3000`: ábrala desde la
-tablet o el móvil. La red de la tienda debe estar marcada como **privada** en Windows.
+En macOS o Linux: `npm install`, `cp .env.example .env`, `npm run build` y `npm start`.
 
 ### Arranque automático al encender el ordenador
 
@@ -39,7 +37,7 @@ tablet o el móvil. La red de la tienda debe estar marcada como **privada** en W
 
 En Windows, el script crea una tarea programada que arranca la app al iniciar sesión (sin ventana, con
 reinicio automático si se cierra) y abre el puerto 3000 en el cortafuegos **solo para redes privadas**.
-Para arrancarla a mano basta con hacer doble clic en `scripts/windows/iniciar.bat`.
+Para arrancarla a mano basta con hacer doble clic en `ARRANCAR.bat`.
 El registro de funcionamiento queda en `logs/servidor.log`.
 
 ### Probar con datos ficticios y después empezar de cero
