@@ -1,4 +1,4 @@
-# Ortopedia · Gestión clínica y de taller
+# Jardón Ortopedia · Gestión clínica y de taller
 
 Web App **100 % local** para una ortopedia: historial clínico (plantillas a medida y medias de compresión),
 taller de reparaciones con desglose de costes, trazabilidad por número de serie y copias de seguridad.

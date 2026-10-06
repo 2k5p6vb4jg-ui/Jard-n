@@ -7,7 +7,7 @@ const ips = Object.values(os.networkInterfaces())
   .filter((i) => i && i.family === "IPv4" && !i.internal)
   .map((i) => i.address);
 
-console.log("\n  🦶  Ortopedia · Gestión clínica y taller");
+console.log("\n  🦶  Jardón Ortopedia · Gestión clínica y taller");
 console.log(`  ➜  En este equipo:   http://localhost:${port}`);
 for (const ip of ips) console.log(`  ➜  Desde la Wi-Fi:   http://${ip}:${port}`);
 console.log("");

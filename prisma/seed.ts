@@ -50,8 +50,8 @@ async function main() {
   await prisma.settings.create({
     data: {
       id: 1,
-      businessName: "Ortopedia Jardín",
-      legalName: "Ortopedia Jardín S.L.",
+      businessName: "Jardón Ortopedia",
+      legalName: "Jardón Ortopedia S.L.",
       taxId: "B12345678",
       healthLicense: "CS-0000-ORT",
       address: "Calle del Jardín, 12",
@@ -59,7 +59,7 @@ async function main() {
       postalCode: "46001",
       province: "Valencia",
       phone: "960 000 000",
-      email: "info@ortopedia-jardin.example",
+      email: "info@jardon-ortopedia.example",
       defaultHourlyRateCents: 3800,
       defaultTaxRate: 21,
       quoteValidityDays: 30,

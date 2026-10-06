@@ -6,8 +6,8 @@ import { BottomNav, Sidebar } from "@/components/layout/Navigation";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: { default: "Ortopedia · Gestión", template: "%s · Ortopedia" },
-  description: "Gestión clínica y de taller para ortopedia (uso local).",
+  title: { default: "Jardón Ortopedia", template: "%s · Jardón Ortopedia" },
+  description: "Jardón Ortopedia · Gestión clínica y de taller (uso local).",
   robots: { index: false, follow: false },
 };
 
@@ -24,7 +24,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="es">
       <body>
         <div className="flex min-h-dvh">
-          <Sidebar businessName={settings?.businessName ?? "Ortopedia"} />
+          <Sidebar businessName={settings?.businessName ?? "Jardón Ortopedia"} />
           <main className="min-w-0 flex-1 px-4 pb-28 pt-6 sm:px-8 lg:pb-10 lg:pt-8">
             <div className="mx-auto max-w-7xl">{children}</div>
           </main>

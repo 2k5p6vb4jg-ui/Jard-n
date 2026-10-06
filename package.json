@@ -1,5 +1,5 @@
 {
-  "name": "ortopedia-gestion",
+  "name": "jardon-ortopedia",
   "version": "0.1.0",
   "private": true,
   "description": "Gestión clínica y de taller para ortopedia. Web App local (LAN), SQLite + Prisma.",
