@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
+import { erasePatient } from "@/lib/gdpr";
 import { type ActionState, bool, date, FormError, handle, normalizeDni, required, str } from "@/lib/forms";
 
 function patientData(fd: FormData) {
@@ -59,4 +60,19 @@ export async function updatePatient(id: string, _prev: ActionState, fd: FormData
   if (res?.error) return res;
   revalidatePath(`/pacientes/${id}`);
   redirect(`/pacientes/${id}`);
+}
+
+/** Supresión RGPD: exige escribir ELIMINAR. */
+export async function erasePatientAction(id: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
+  if (String(fd.get("confirm") ?? "").trim().toUpperCase() !== "ELIMINAR") return { error: "Escriba ELIMINAR para confirmar." };
+  const counts = await erasePatient(id);
+  if (!counts) return { error: "El paciente ya no existe." };
+  await audit(
+    "DELETE",
+    "Patient",
+    id,
+    `Supresión RGPD: ${counts.insoles} plantillas, ${counts.stockings} medias, ${counts.documents} documentos; ${counts.workOrders} órdenes anonimizadas; ${counts.products} productos desvinculados`,
+  );
+  revalidatePath("/", "layout");
+  redirect("/pacientes?eliminado=1");
 }

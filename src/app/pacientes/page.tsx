@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, Search, UserPlus, Users } from "lucide-react";
+import { ChevronRight, Search, ShieldCheck, UserPlus, Users } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -9,8 +9,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 
 export const metadata = { title: "Pacientes" };
 
-export default async function PatientsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const { q = "" } = await searchParams;
+export default async function PatientsPage({ searchParams }: { searchParams: Promise<{ q?: string; eliminado?: string }> }) {
+  const { q = "", eliminado } = await searchParams;
   const term = q.trim();
   const patients = await prisma.patient.findMany({
     where: {
@@ -35,6 +35,12 @@ export default async function PatientsPage({ searchParams }: { searchParams: Pro
         description={`${patients.length} fichas`}
         actions={<LinkButton href="/pacientes/nuevo" icon={UserPlus}>Nuevo paciente</LinkButton>}
       />
+      {eliminado && (
+        <p role="status" className="mb-4 flex items-center gap-2 rounded-xl bg-emerald-50 p-4 text-emerald-800">
+          <ShieldCheck className="size-5 shrink-0" />
+          Datos del paciente suprimidos. Las órdenes de taller se han conservado anonimizadas.
+        </p>
+      )}
       <form className="relative mb-4">
         <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
         <input name="q" defaultValue={q} placeholder="Buscar por nombre, DNI o teléfono…" className="field pl-12" />

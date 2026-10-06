@@ -11,29 +11,50 @@ Ningún dato sale del equipo (sin servicios en la nube, sin telemetría).
 
 ![Panel](docs/capturas/panel-escritorio.png)
 
-## Puesta en marcha
+## Instalación en el ordenador de la tienda
+
+1. Instale **Node.js LTS** desde <https://nodejs.org> (22.13 o superior).
+2. Descargue esta carpeta (o `git clone`) y, dentro de ella, abra una terminal:
 
 ```bash
 npm install
-cp .env.example .env          # DATABASE_URL="file:./dev.db" → prisma/dev.db
-npm run setup                 # crea la BD (migración init) y carga datos de prueba
-npm run dev                   # desarrollo, escucha en 0.0.0.0:3000
+cp .env.example .env          # en Windows: copy .env.example .env
+npm run build
+npm start                     # crea la base de datos vacía y abre la app en 0.0.0.0:3000
 ```
 
-Para el uso diario en la tienda (más rápido y estable):
+3. Abra <http://localhost:3000>, vaya a **Ajustes** y rellene los datos de la tienda, los técnicos, el logo
+   y **active el PIN**. La app empieza vacía: no contiene datos de prueba.
+
+Al arrancar se muestran las direcciones para la Wi-Fi, p. ej. `http://192.168.1.40:3000`: ábrala desde la
+tablet o el móvil. La red de la tienda debe estar marcada como **privada** en Windows.
+
+### Arranque automático al encender el ordenador
+
+| Sistema | Instalar | Quitar |
+| --- | --- | --- |
+| **Windows** | Clic derecho en `scripts/windows/instalar-inicio.ps1` → *Ejecutar con PowerShell* | `scripts/windows/desinstalar-inicio.ps1` |
+| **macOS** | `zsh scripts/macos/instalar-inicio.sh` | `launchctl bootout gui/$(id -u)/es.jardon.ortopedia` |
+| **Linux** | `bash scripts/linux/instalar-inicio.sh` | `systemctl --user disable --now jardon-ortopedia` |
+
+En Windows, el script crea una tarea programada que arranca la app al iniciar sesión (sin ventana, con
+reinicio automático si se cierra) y abre el puerto 3000 en el cortafuegos **solo para redes privadas**.
+Para arrancarla a mano basta con hacer doble clic en `scripts/windows/iniciar.bat`.
+El registro de funcionamiento queda en `logs/servidor.log`.
+
+### Probar con datos ficticios
 
 ```bash
-npm run build && npm start    # producción, escucha en 0.0.0.0:3000
+npm run demo     # ⚠️ BORRA todos los datos y carga pacientes y órdenes de ejemplo
+npm run dev      # modo desarrollo
 ```
-
-Al arrancar se imprimen las direcciones, p. ej. `http://192.168.1.40:3000`: ábrala desde la tablet o el móvil.
-Si no conecta, permita el puerto 3000 en el cortafuegos de Windows/macOS **solo para redes privadas**.
 
 | Script | Uso |
 | --- | --- |
-| `npm run db:seed` | Vuelve a cargar los datos ficticios (borra los existentes) |
-| `npm run db:migrate` | Crea una migración tras cambiar `schema.prisma` |
-| `npm run db:studio` | Explorador visual de la BD |
+| `npm start` | Aplica las actualizaciones pendientes de la base de datos (sin borrar nada) y arranca |
+| `npm run demo` / `npm run db:seed` | Datos ficticios — **borran los datos existentes** |
+| `npm run db:migrate` | (Desarrollo) crea una migración tras cambiar `schema.prisma` |
+| `npm run db:studio` | Explorador visual de la base de datos |
 | `npm run lint` | Comprobación de tipos |
 
 ## Estructura
@@ -78,10 +99,17 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
 
 ## Privacidad (RGPD)
 
-- La BD y los adjuntos viven solo en este equipo y están excluidos de Git (`.gitignore`).
-- Las copias de seguridad contienen datos de salud (art. 9 RGPD): guárdelas en un soporte cifrado y custodiado.
+- La base de datos y los adjuntos viven solo en este equipo y están excluidos de Git (`.gitignore`).
+- **Acceso con PIN** para que nadie de la Wi-Fi abra las fichas, y **registro de actividad** (Ajustes →
+  Registro de actividad): accesos, altas, cambios, exportaciones, copias y borrados, con la IP del dispositivo.
+- **Derecho de acceso y portabilidad:** en la ficha del paciente, «Exportar todos sus datos» genera un .zip con
+  un informe PDF legible, los datos en JSON y todos sus documentos.
+- **Derecho de supresión:** «Suprimir todos los datos» (escribiendo ELIMINAR) borra la ficha, prescripciones,
+  documentos y sus archivos; las órdenes de taller y presupuestos se conservan **anonimizadas** y los productos
+  con nº de serie quedan sin titular. Antes de borrar, confirme con su asesoría si existe obligación legal de
+  conservar parte de la información. Las copias de seguridad antiguas contienen los datos hasta que rotan.
+- Las copias de seguridad contienen datos de salud (art. 9 RGPD): guárdelas cifradas y custodiadas.
 - Se recomienda cifrar el disco del PC (BitLocker / FileVault) y usar una Wi-Fi WPA2/3 sin acceso de invitados.
-- `AuditLog` registra exportaciones y copias; el borrado de un paciente elimina en cascada su historial clínico.
 
 ## Qué se puede hacer ya
 
@@ -121,15 +149,12 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
 ## Actualizar una instalación existente
 
 ```bash
-git pull
+git pull                 # o sustituir la carpeta por la versión nueva, conservando prisma/dev.db, uploads/ y backups/
 npm install
-npx prisma migrate deploy   # aplica los cambios de la base de datos SIN borrar datos
-npm run build && npm start
+npm run build
+npm start                # aplica sola las actualizaciones de la base de datos, sin borrar datos
 ```
 
-> ⚠️ `npm run db:seed` y `npm run setup` borran todos los datos: úselos solo en pruebas.
+Si usa el arranque automático, reinicie el ordenador (o la tarea/servicio) después de `npm run build`.
 
-## Próxima fase
-
-Derechos RGPD (exportar / borrar todos los datos de un paciente) y arranque automático al encender
-el ordenador de la tienda.
+> ⚠️ `npm run demo` y `npm run db:seed` borran todos los datos: úselos solo en pruebas.

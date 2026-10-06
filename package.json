@@ -6,14 +6,13 @@
   "scripts": {
     "dev": "node scripts/lan-info.mjs && next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
-    "start": "node scripts/lan-info.mjs && next start -H 0.0.0.0 -p 3000",
+    "start": "prisma migrate deploy && node scripts/lan-info.mjs && next start -H 0.0.0.0 -p 3000",
     "lint": "tsc --noEmit",
-    "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio",
-    "setup": "prisma migrate dev --name init && prisma db seed"
+    "demo": "prisma migrate deploy && prisma db seed"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

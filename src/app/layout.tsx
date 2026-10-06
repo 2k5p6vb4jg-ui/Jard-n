@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { prisma } from "@/lib/prisma";
 import { ensureDailyBackup } from "@/lib/backup";
+import { ensureSettings } from "@/lib/settings";
 import { BottomNav, Sidebar } from "@/components/layout/Navigation";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,7 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  await ensureSettings();
   const settings = await prisma.settings.findUnique({ where: { id: 1 }, select: { businessName: true, logoPath: true, updatedAt: true, pinHash: true } });
   // Copia diaria en segundo plano (no bloquea la carga de la página)
   ensureDailyBackup();

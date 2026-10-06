@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
   CalendarClock,
+  FileDown,
   FileText,
   Footprints,
   Pencil,
@@ -36,6 +37,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { DocumentUploader } from "@/components/patients/DocumentUploader";
 import { DocumentGallery } from "@/components/patients/DocumentGallery";
 import { deleteDocument, uploadDocuments } from "../documents";
+import { erasePatientAction } from "../actions";
+import { ErasePatientForm } from "@/components/patients/ErasePatientForm";
 import { updateRenewal } from "@/app/renewals";
 import { SubmitButton } from "@/components/ui/Form";
 import { LinkButton } from "@/components/ui/Button";
@@ -118,7 +121,8 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Ficha general */}
-        <Card className="lg:col-span-1">
+        <div className="space-y-6 lg:col-span-1">
+        <Card>
           <CardHeader title="Ficha general" icon={Stethoscope} />
           <dl className="space-y-3 px-5 py-4 text-slate-700">
             {patient.phone && <p className="flex items-center gap-3"><Phone className="size-4 text-slate-400" /><a href={`tel:${patient.phone.replace(/\s/g, "")}`}>{patient.phone}</a></p>}
@@ -128,6 +132,19 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
             {patient.notes && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{patient.notes}</p>}
           </dl>
         </Card>
+
+        <Card>
+          <CardHeader title="Protección de datos" icon={ShieldCheck} subtitle="Derechos del paciente (RGPD)" />
+          <div className="space-y-3 p-5">
+            <a href={`/api/pacientes/${patient.id}/exportar`} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 font-medium text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
+              <FileDown className="size-5" />
+              Exportar todos sus datos
+            </a>
+            <p className="text-xs text-slate-500">Acceso y portabilidad: .zip con informe PDF para entregar, datos en JSON y todos sus documentos.</p>
+            <ErasePatientForm action={erasePatientAction.bind(null, patient.id)} name={`${patient.firstName} ${patient.lastName}`} />
+          </div>
+        </Card>
+        </div>
 
         <div className="space-y-6 lg:col-span-2">
           {/* Plantillas */}

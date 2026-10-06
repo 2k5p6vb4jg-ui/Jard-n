@@ -1,8 +1,9 @@
-import { BellRing, Building2, DatabaseBackup, FolderDown, HardDriveDownload, ImageIcon, Info, KeyRound, Lock, Plus, Receipt, Save, ShieldAlert, Trash2, Users } from "lucide-react";
+import { BellRing, Building2, DatabaseBackup, FolderDown, HardDriveDownload, ImageIcon, Info, KeyRound, Lock, Plus, Receipt, Save, ScrollText, ShieldAlert, Trash2, Users } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { toEurosInput } from "@/lib/forms";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { LinkButton } from "@/components/ui/Button";
 import { ActionForm, SubmitButton } from "@/components/ui/Form";
 import { FormSection, MoneyField, NumberField, TextAreaField, TextField } from "@/components/ui/Fields";
 import { InlineForm } from "@/components/ui/InlineForm";
@@ -26,7 +27,11 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Ajustes" description="Datos de la ortopedia, técnicos y copias de seguridad" />
+      <PageHeader
+        title="Ajustes"
+        description="Datos de la ortopedia, técnicos y copias de seguridad"
+        actions={<LinkButton href="/configuracion/registro" variant="secondary" icon={ScrollText}>Registro de actividad</LinkButton>}
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
