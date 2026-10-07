@@ -20,6 +20,9 @@ Ningún dato sale del equipo (sin servicios en la nube, sin telemetría).
    - Si Windows muestra «Windows protegió su PC», pulse **Más información → Ejecutar de todas formas**.
    - Si aparece el aviso del **Firewall**, marque solo **Redes privadas** y pulse **Permitir acceso**.
 4. Los demás días: **doble clic en `ARRANCAR.bat`** (o configure el arranque automático, abajo).
+5. **¿El móvil no abre la app?** Cierre la ventana negra y haga doble clic en **`PERMITIR-MOVIL.bat`** (pide
+   permiso de administrador): quita los bloqueos del cortafuegos de Windows, marca la red como privada y
+   muestra la dirección exacta que hay que escribir en el móvil.
 
 En la ventana negra aparece la dirección para la Wi-Fi, p. ej. `http://192.168.1.40:3000`: ábrala desde la
 tablet, el móvil u otros ordenadores. **Solo un ordenador ejecuta la app** (el que guarda los datos); los demás

@@ -43,6 +43,9 @@ Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Se
   -Description "Inicia Jardón Ortopedia (gestión clínica y de taller) en el puerto $Port" | Out-Null
 
 # Cortafuegos: solo red privada (la Wi-Fi de la tienda debe estar marcada como "Privada" en Windows)
+# Las reglas que BLOQUEAN node.exe (creadas si se pulsó «Cancelar» en el aviso del Firewall) ganan a cualquier permiso
+Get-NetFirewallApplicationFilter -ErrorAction SilentlyContinue | Where-Object { $_.Program -like "*node.exe" } |
+  Get-NetFirewallRule -ErrorAction SilentlyContinue | Where-Object { $_.Direction -eq "Inbound" -and $_.Action -eq "Block" } | Remove-NetFirewallRule
 Get-NetFirewallRule -DisplayName "Jardon Ortopedia ($Port)" -ErrorAction SilentlyContinue | Remove-NetFirewallRule
 New-NetFirewallRule -DisplayName "Jardon Ortopedia ($Port)" -Direction Inbound -Protocol TCP -LocalPort $Port -Action Allow -Profile Private | Out-Null
 
