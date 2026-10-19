@@ -3,7 +3,8 @@ import { ClipboardPlus, Wrench } from "lucide-react";
 import type { WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/dates";
-import { WORK_ORDER_FLOW, equipmentCategory, priority, serviceType, workOrderStatus } from "@/lib/labels";
+import { WORK_ORDER_FLOW, priorityTone, workOrderStatus } from "@/lib/labels";
+import { getStatusLabels } from "@/lib/workOrderOptions";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
@@ -16,9 +17,16 @@ export default async function WorkshopPage({ searchParams }: { searchParams: Pro
   const { estado } = await searchParams;
   const status = estado && estado in workOrderStatus ? (estado as WorkOrderStatus) : undefined;
 
+  const st = await getStatusLabels();
   const orders = await prisma.workOrder.findMany({
     where: status ? { status } : { status: { notIn: ["DELIVERED", "CANCELLED"] } },
-    include: { patient: { select: { firstName: true, lastName: true } }, technician: { select: { name: true } } },
+    include: {
+      patient: { select: { firstName: true, lastName: true } },
+      technician: { select: { name: true } },
+      equipmentCategory: { select: { label: true } },
+      serviceType: { select: { label: true } },
+      priority: { select: { label: true, key: true } },
+    },
     orderBy: [{ receivedAt: "desc" }],
   });
 
@@ -43,7 +51,7 @@ export default async function WorkshopPage({ searchParams }: { searchParams: Pro
       />
       <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
         {chip("/taller", "Activas", !status)}
-        {WORK_ORDER_FLOW.map((s) => chip(`/taller?estado=${s}`, workOrderStatus[s].label, status === s))}
+        {WORK_ORDER_FLOW.map((s) => chip(`/taller?estado=${s}`, st[s], status === s))}
       </div>
       <Card>
         {orders.length === 0 ? (
@@ -56,12 +64,12 @@ export default async function WorkshopPage({ searchParams }: { searchParams: Pro
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-sm text-slate-500">{o.code}</span>
-                      <Badge tone={workOrderStatus[o.status].tone}>{workOrderStatus[o.status].label}</Badge>
-                      {o.priority !== "NORMAL" && <Badge tone={priority[o.priority].tone}>{priority[o.priority].label}</Badge>}
+                      <Badge tone={workOrderStatus[o.status].tone}>{st[o.status]}</Badge>
+                      {o.priority.key !== "NORMAL" && <Badge tone={priorityTone(o.priority.key)}>{o.priority.label}</Badge>}
                       {o.underWarranty && <Badge tone="indigo">Garantía</Badge>}
                     </div>
                     <p className="mt-1 font-medium text-slate-800">
-                      {equipmentCategory[o.equipmentCategory]} · {serviceType[o.serviceType]}
+                      {o.equipmentCategory.label} · {o.serviceType.label}
                     </p>
                     <p className="truncate text-sm text-slate-500">{o.reportedIssue}</p>
                   </div>

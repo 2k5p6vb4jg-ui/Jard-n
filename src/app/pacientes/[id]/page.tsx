@@ -18,12 +18,12 @@ import {
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { statusTones } from "@/lib/insoleOrders";
+import { getStatusLabels } from "@/lib/workOrderOptions";
 import { formatDate } from "@/lib/dates";
 import { formatEUR } from "@/lib/money";
 import {
   compressionClass,
   correctionType,
-  equipmentCategory,
   footPathology,
   garmentType,
   insoleFinish,
@@ -86,12 +86,13 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
       insoles: { include: { pathologies: true, corrections: true }, orderBy: { measuredAt: "desc" } },
       stockings: { orderBy: { measuredAt: "desc" } },
       documents: { orderBy: { createdAt: "desc" } },
-      workOrders: { orderBy: { receivedAt: "desc" } },
+      workOrders: { include: { equipmentCategory: { select: { label: true } } }, orderBy: { receivedAt: "desc" } },
       insoleOrders: { include: { type: true, material: true, status: true }, orderBy: { createdAt: "desc" } },
     },
   });
   if (!patient) notFound();
-  const tones = statusTones(await prisma.insoleOrderOption.findMany({ where: { kind: "STATUS" }, orderBy: [{ sortOrder: "asc" }, { label: "asc" }] }));
+  const st = await getStatusLabels();
+  const tones = statusTones(await prisma.catalogOption.findMany({ where: { kind: "STATUS" }, orderBy: [{ sortOrder: "asc" }, { label: "asc" }] }));
 
   const prescriptionLinks = [
     ...patient.insoles.map((i) => ({ value: `insole:${i.id}`, label: `Plantillas ${insoleMaterial[i.material]}${i.shoreDensity ? ` ${i.shoreDensity}º` : ""} · ${formatDate(i.measuredAt)}` })),
@@ -159,8 +160,8 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
               {patient.workOrders.map((o) => (
                 <li key={o.id}>
                   <Link href={`/taller/${o.id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-slate-50">
-                    <span><span className="font-mono text-sm text-slate-500">{o.code}</span> · {equipmentCategory[o.equipmentCategory]}</span>
-                    <Badge tone={workOrderStatus[o.status].tone}>{workOrderStatus[o.status].label}</Badge>
+                    <span><span className="font-mono text-sm text-slate-500">{o.code}</span> · {o.equipmentCategory.label}</span>
+                    <Badge tone={workOrderStatus[o.status].tone}>{st[o.status]}</Badge>
                   </Link>
                 </li>
               ))}

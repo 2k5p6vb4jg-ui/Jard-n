@@ -100,3 +100,8 @@ export async function handle(fn: () => Promise<void>): Promise<ActionState> {
     throw e; // incluye redirect() de Next, que debe propagarse
   }
 }
+
+/** Opciones de un desplegable: las desactivadas solo aparecen si el registro ya la tiene (para no perder el dato al editar). */
+export function optionChoices(list: { id: string; label: string; active: boolean }[], current?: string | null) {
+  return list.filter((o) => o.active || o.id === current).map((o) => ({ value: o.id, label: o.active ? o.label : `${o.label} (desactivada)` }));
+}

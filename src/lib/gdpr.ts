@@ -8,21 +8,19 @@ import { prisma } from "./prisma";
 import { formatDate } from "./dates";
 import { formatEUR } from "./money";
 import { resolveUploadPath, UPLOADS_ROOT } from "./storage";
+import { getStatusLabels } from "./workOrderOptions";
 import { renderTextPdf, type TextSection } from "./pdf/textPdf";
 import {
   compressionClass,
   correctionType,
   documentType,
-  equipmentCategory,
   footPathology,
   garmentType,
   insoleFinish,
   insoleMaterial,
   interventionType,
   prescriptionStatus,
-  serviceType,
   side,
-  workOrderStatus,
 } from "./labels";
 
 /** Todo lo que la app guarda de un paciente (derecho de acceso, art. 15 RGPD). */
@@ -33,9 +31,12 @@ export async function collectPatientData(patientId: string) {
       insoles: { include: { pathologies: true, corrections: true }, orderBy: { measuredAt: "asc" } },
       stockings: { orderBy: { measuredAt: "asc" } },
       documents: { orderBy: { createdAt: "asc" } },
-      workOrders: { include: { parts: true, quotes: true, statusHistory: true }, orderBy: { receivedAt: "asc" } },
+      workOrders: {
+        include: { parts: { include: { category: true } }, quotes: true, statusHistory: true, equipmentCategory: true, serviceType: true, priority: true },
+        orderBy: { receivedAt: "asc" },
+      },
       insoleOrders: { include: { type: true, material: true, status: true }, orderBy: { createdAt: "asc" } },
-      products: { include: { interventions: { orderBy: { date: "asc" } } } },
+      products: { include: { category: true, interventions: { orderBy: { date: "asc" } } } },
     },
   });
 }
@@ -46,6 +47,7 @@ const yesNo = (b: boolean) => (b ? "Sí" : "No");
 
 async function reportPdf(p: PatientData): Promise<Uint8Array> {
   const s = await prisma.settings.findUnique({ where: { id: 1 } });
+  const st = await getStatusLabels();
   const business = s?.businessName ?? "La ortopedia";
   const sections: TextSection[] = [
     {
@@ -107,7 +109,7 @@ async function reportPdf(p: PatientData): Promise<Uint8Array> {
     {
       heading: "Taller",
       rows: p.workOrders.flatMap((o) => [
-        `${o.code} · ${equipmentCategory[o.equipmentCategory]} · ${serviceType[o.serviceType]} · ${workOrderStatus[o.status].label}`,
+        `${o.code} · ${o.equipmentCategory.label} · ${o.serviceType.label} · ${st[o.status]}`,
         ["Entrada / entrega", `${formatDate(o.receivedAt)} / ${formatDate(o.deliveredAt)}`],
         ["Motivo", o.reportedIssue],
         ["Presupuestos", o.quotes.map((q) => `${q.number} (${formatEUR(q.totalCents)})`).join(", ")],
@@ -116,7 +118,7 @@ async function reportPdf(p: PatientData): Promise<Uint8Array> {
     {
       heading: "Productos con número de serie",
       rows: p.products.flatMap((pr) => [
-        `${equipmentCategory[pr.category]} · ${pr.brand} ${pr.model} · S/N ${pr.serialNumber}`,
+        `${pr.category.label} · ${pr.brand} ${pr.model} · S/N ${pr.serialNumber}`,
         ["Entrega / garantía", `${formatDate(pr.deliveredAt)} / hasta ${formatDate(pr.warrantyUntil)}`],
         ["Intervenciones", pr.interventions.map((i) => `${interventionType[i.type]} ${formatDate(i.date)}`).join(", ")],
       ]),

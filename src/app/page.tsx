@@ -8,7 +8,8 @@ import {
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getRenewalAlerts } from "@/lib/renewals";
-import { WORK_ORDER_FLOW, equipmentCategory, priority, workOrderStatus } from "@/lib/labels";
+import { WORK_ORDER_FLOW, priorityTone, workOrderStatus } from "@/lib/labels";
+import { getStatusLabels } from "@/lib/workOrderOptions";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
@@ -19,15 +20,20 @@ import { RenewalList } from "@/components/dashboard/RenewalList";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const [alerts, byStatus, activeOrders] = await Promise.all([
+  const [alerts, byStatus, activeOrders, st] = await Promise.all([
     getRenewalAlerts(),
     prisma.workOrder.groupBy({ by: ["status"], _count: { _all: true } }),
     prisma.workOrder.findMany({
       where: { status: { notIn: ["DELIVERED", "CANCELLED"] } },
-      include: { patient: { select: { firstName: true, lastName: true } } },
+      include: {
+        patient: { select: { firstName: true, lastName: true } },
+        equipmentCategory: { select: { label: true } },
+        priority: { select: { label: true, key: true } },
+      },
       orderBy: [{ promisedAt: "asc" }, { receivedAt: "asc" }],
       take: 8,
     }),
+    getStatusLabels(),
   ]);
 
   const count = (s: string) => byStatus.find((b) => b.status === s)?._count._all ?? 0;
@@ -58,7 +64,7 @@ export default async function DashboardPage() {
             href={`/taller?estado=${s}`}
             className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-teal-300 hover:shadow sm:block sm:p-4"
           >
-            <Badge tone={workOrderStatus[s].tone}>{workOrderStatus[s].label}</Badge>
+            <Badge tone={workOrderStatus[s].tone}>{st[s]}</Badge>
             <p className="text-2xl font-semibold text-slate-900 sm:mt-3 sm:text-3xl">{count(s)}</p>
           </Link>
         ))}
@@ -96,17 +102,17 @@ export default async function DashboardPage() {
                   <Link href={`/taller/${o.id}`} className="block px-5 py-3 transition hover:bg-slate-50">
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-mono text-sm text-slate-500">{o.code}</span>
-                      <Badge tone={workOrderStatus[o.status].tone}>{workOrderStatus[o.status].label}</Badge>
+                      <Badge tone={workOrderStatus[o.status].tone}>{st[o.status]}</Badge>
                     </div>
                     <p className="mt-1 font-medium text-slate-800">
-                      {equipmentCategory[o.equipmentCategory]}
+                      {o.equipmentCategory.label}
                       {o.equipmentModel && <span className="font-normal text-slate-500"> · {o.equipmentModel}</span>}
                     </p>
                     <div className="mt-1 flex items-center justify-between gap-2 text-sm text-slate-500">
                       <span className="truncate">
                         {o.patient ? `${o.patient.firstName} ${o.patient.lastName}` : o.customerName}
                       </span>
-                      {o.priority !== "NORMAL" && <Badge tone={priority[o.priority].tone}>{priority[o.priority].label}</Badge>}
+                      {o.priority.key !== "NORMAL" && <Badge tone={priorityTone(o.priority.key)}>{o.priority.label}</Badge>}
                     </div>
                   </Link>
                 </li>

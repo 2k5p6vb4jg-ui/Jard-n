@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ClipboardPlus, Pencil, Plus, ScanBarcode, Search, ShieldCheck, ShieldOff } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/dates";
-import { equipmentCategory, interventionType } from "@/lib/labels";
+import { interventionType } from "@/lib/labels";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -19,6 +19,7 @@ export default async function TraceabilityPage({ searchParams }: { searchParams:
       ? { OR: [{ serialNumber: { contains: term } }, { lotNumber: { contains: term } }, { model: { contains: term } }, { brand: { contains: term } }] }
       : undefined,
     include: {
+      category: { select: { label: true } },
       patient: { select: { firstName: true, lastName: true } },
       interventions: { orderBy: { date: "desc" } },
     },
@@ -43,7 +44,7 @@ export default async function TraceabilityPage({ searchParams }: { searchParams:
               <Card key={p.id} className="p-5">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <p className="text-sm text-slate-500">{equipmentCategory[p.category]}</p>
+                    <p className="text-sm text-slate-500">{p.category.label}</p>
                     <p className="text-lg font-semibold text-slate-900">{p.brand} {p.model}</p>
                   </div>
                   {inWarranty ? (

@@ -2,23 +2,20 @@ import type {
   CompressionClass,
   CorrectionType,
   DocumentType,
-  EquipmentCategory,
   FootPathology,
   GarmentType,
   InsoleFinish,
   InsoleMaterial,
   InterventionType,
-  PartCategory,
   PrescriptionStatus,
-  Priority,
   QuoteStatus,
-  ServiceType,
   WorkOrderStatus,
 } from "@prisma/client";
 
 /** Tonos de badge disponibles (ver components/ui/Badge.tsx) */
 export type Tone = "slate" | "teal" | "indigo" | "sky" | "amber" | "rose" | "emerald" | "violet";
 
+/** Color de cada estado de reparación. El nombre visible se edita en Ajustes → Opciones (ver getStatusLabels). */
 export const workOrderStatus: Record<WorkOrderStatus, { label: string; tone: Tone }> = {
   RECEIVED: { label: "Entrada", tone: "slate" },
   DIAGNOSIS: { label: "Diagnóstico", tone: "sky" },
@@ -39,12 +36,10 @@ export const WORK_ORDER_FLOW: WorkOrderStatus[] = [
   "DELIVERED",
 ];
 
-export const priority: Record<Priority, { label: string; tone: Tone }> = {
-  LOW: { label: "Baja", tone: "slate" },
-  NORMAL: { label: "Normal", tone: "sky" },
-  HIGH: { label: "Alta", tone: "amber" },
-  URGENT: { label: "Urgente", tone: "rose" },
-};
+/** Color de la prioridad según su clave; las prioridades añadidas en Ajustes se muestran en violeta. */
+export function priorityTone(key: string | null): Tone {
+  return ({ LOW: "slate", HIGH: "amber", URGENT: "rose" } as Record<string, Tone>)[key ?? ""] ?? "violet";
+}
 
 export const prescriptionStatus: Record<PrescriptionStatus, { label: string; tone: Tone }> = {
   PENDING: { label: "Pendiente", tone: "slate" },
@@ -60,41 +55,6 @@ export const quoteStatus: Record<QuoteStatus, { label: string; tone: Tone }> = {
   ACCEPTED: { label: "Aceptado", tone: "emerald" },
   REJECTED: { label: "Rechazado", tone: "rose" },
   EXPIRED: { label: "Caducado", tone: "amber" },
-};
-
-export const equipmentCategory: Record<EquipmentCategory, string> = {
-  MANUAL_WHEELCHAIR: "Silla de ruedas manual",
-  ELECTRIC_WHEELCHAIR: "Silla de ruedas eléctrica",
-  MOBILITY_SCOOTER: "Scooter de movilidad",
-  PATIENT_LIFT: "Grúa de traslado",
-  WALKER: "Andador",
-  ORTHOSIS: "Órtesis",
-  PROSTHESIS: "Prótesis",
-  MOTOR: "Motor",
-  OTHER: "Otro",
-};
-
-export const serviceType: Record<ServiceType, string> = {
-  GENERAL_REPAIR: "Reparación general",
-  PREVENTIVE_MAINTENANCE: "Mantenimiento preventivo",
-  BATTERY_REPLACEMENT: "Cambio de baterías",
-  CLEANING_DISINFECTION: "Limpieza y desinfección",
-  CUSTOM_ADJUSTMENT: "Ajuste a medida",
-  WARRANTY: "Garantía",
-};
-
-export const partCategory: Record<PartCategory, string> = {
-  RESIN: "Resina",
-  EVA: "EVA",
-  THERMOPLASTIC: "Termoplástico",
-  BATTERY: "Batería",
-  MOTOR: "Motor",
-  WHEEL: "Rueda",
-  SPARE_PART: "Recambio",
-  UPHOLSTERY: "Tapicería",
-  ELECTRONICS: "Electrónica",
-  CONSUMABLE: "Consumible",
-  OTHER: "Otro",
 };
 
 export const footPathology: Record<FootPathology, string> = {

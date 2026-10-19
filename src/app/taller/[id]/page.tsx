@@ -31,7 +31,9 @@ import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/dates";
 import { computeWorkOrderTotals, formatEUR } from "@/lib/money";
 import { toDateInput } from "@/lib/forms";
-import { WORK_ORDER_FLOW, equipmentCategory, partCategory, priority, quoteStatus, serviceType, workOrderStatus } from "@/lib/labels";
+import { WORK_ORDER_FLOW, priorityTone, quoteStatus, workOrderStatus } from "@/lib/labels";
+import { getStatusLabels, getWorkshopOptions } from "@/lib/workOrderOptions";
+import { optionChoices } from "@/lib/forms";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
@@ -48,14 +50,17 @@ const fmtMinutes = (m: number) => (m >= 60 ? `${Math.floor(m / 60)} h ${m % 60 ?
 
 export default async function WorkOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [order, settings, technicians] = await Promise.all([
+  const [order, settings, technicians, st, lists] = await Promise.all([
     prisma.workOrder.findUnique({
       where: { id },
       include: {
         patient: true,
+        equipmentCategory: true,
+        serviceType: true,
+        priority: true,
         technician: true,
         product: true,
-        parts: { orderBy: { createdAt: "asc" } },
+        parts: { include: { category: true }, orderBy: { createdAt: "asc" } },
         timeEntries: { include: { technician: { select: { name: true } } }, orderBy: { startedAt: "desc" } },
         statusHistory: { orderBy: { changedAt: "asc" } },
         quotes: { orderBy: { issuedAt: "desc" } },
@@ -63,6 +68,8 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
     }),
     prisma.settings.findUnique({ where: { id: 1 } }),
     prisma.technician.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
+    getStatusLabels(),
+    getWorkshopOptions(),
   ]);
   if (!order) notFound();
 
@@ -104,7 +111,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
         <ArrowLeft className="size-4" /> Taller
       </Link>
       <PageHeader
-        title={`${order.code} · ${equipmentCategory[order.equipmentCategory]}`}
+        title={`${order.code} · ${order.equipmentCategory.label}`}
         description={[order.equipmentBrand, order.equipmentModel, order.serialNumber && `S/N ${order.serialNumber}`].filter(Boolean).join(" · ")}
         actions={
           <>
@@ -130,7 +137,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
                 }`}
               >
                 {done && !current ? <Check className="size-4 shrink-0" /> : <span className="grid size-4 shrink-0 place-items-center text-xs">{i + 1}</span>}
-                <span className="truncate">{workOrderStatus[s].label}</span>
+                <span className="truncate">{st[s]}</span>
               </li>
             );
           })}
@@ -157,11 +164,11 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
                   </ConfirmButton>
                 ) : (
                   <SubmitButton icon={<ArrowRight className="size-5" />} className="sm:min-w-64">
-                    Pasar a «{workOrderStatus[next].label}»
+                    Pasar a «{st[next]}»
                   </SubmitButton>
                 ),
               )}
-            {prev && statusForm(prev, <SubmitButton icon={<ArrowLeft className="size-5" />} variant="secondary">Volver a «{workOrderStatus[prev].label}»</SubmitButton>)}
+            {prev && statusForm(prev, <SubmitButton icon={<ArrowLeft className="size-5" />} variant="secondary">Volver a «{st[prev]}»</SubmitButton>)}
             <div className="sm:ml-auto">
               {statusForm(
                 "CANCELLED",
@@ -179,12 +186,12 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
           {/* ── Datos del servicio ─────────────────────────────────────── */}
           <Card>
             <CardHeader
-              title={serviceType[order.serviceType]}
+              title={order.serviceType.label}
               icon={Wrench}
               subtitle={order.patient ? `${order.patient.firstName} ${order.patient.lastName}` : [order.customerName, order.customerPhone].filter(Boolean).join(" · ")}
               action={
                 <div className="flex flex-wrap justify-end gap-1.5">
-                  {order.priority !== "NORMAL" && <Badge tone={priority[order.priority].tone}>{priority[order.priority].label}</Badge>}
+                  {order.priority.key !== "NORMAL" && <Badge tone={priorityTone(order.priority.key)}>{order.priority.label}</Badge>}
                   {order.underWarranty && <Badge tone="indigo">Garantía</Badge>}
                 </div>
               }
@@ -217,7 +224,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-slate-800">{p.description}</p>
                     <p className="text-sm text-slate-500">
-                      <Badge tone="slate">{partCategory[p.category]}</Badge>
+                      <Badge tone="slate">{p.category.label}</Badge>
                       <span className="ml-2">{p.quantity.toLocaleString("es-ES")} {p.unit} × {formatEUR(p.unitPriceCents)}</span>
                       {p.reference && <span className="ml-2 font-mono">Ref. {p.reference}</span>}
                     </p>
@@ -236,9 +243,9 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
               <InlineForm action={addPart.bind(null, id)} className="border-t border-slate-100 bg-slate-50/60 p-5">
                 <p className="mb-3 font-medium text-slate-700">Añadir pieza o material</p>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
-                  <select name="category" required defaultValue="" className="field col-span-2" aria-label="Categoría">
+                  <select name="categoryId" required defaultValue="" className="field col-span-2" aria-label="Categoría">
                     <option value="" disabled>Categoría…</option>
-                    {Object.entries(partCategory).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    {optionChoices(lists.partCategories).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                   <input name="description" required placeholder="Descripción" className="field col-span-2 sm:col-span-4" aria-label="Descripción" />
                   <input name="quantity" inputMode="decimal" placeholder="Cant." className="field" aria-label="Cantidad" />
@@ -406,7 +413,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
             <ol className="space-y-3 px-5 py-4">
               {order.statusHistory.map((h) => (
                 <li key={h.id} className="flex flex-wrap items-center gap-2 text-sm">
-                  <Badge tone={workOrderStatus[h.toStatus].tone}>{workOrderStatus[h.toStatus].label}</Badge>
+                  <Badge tone={workOrderStatus[h.toStatus].tone}>{st[h.toStatus]}</Badge>
                   <span className="text-slate-500">
                     {h.changedAt.toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" })}
                   </span>

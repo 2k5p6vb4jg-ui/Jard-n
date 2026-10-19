@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
-import { equipmentCategory, serviceType } from "@/lib/labels";
 import { parseQuoteLines } from "@/lib/quotes";
 import { renderQuotePdf } from "@/lib/pdf/quotePdf";
 import { loadLogo } from "@/lib/branding";
@@ -11,7 +10,7 @@ export const dynamic = "force-dynamic";
 /** PDF del presupuesto, regenerado desde su instantánea (idéntico en cada descarga). */
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const quote = await prisma.quote.findUnique({ where: { id }, include: { workOrder: { include: { patient: true } } } });
+  const quote = await prisma.quote.findUnique({ where: { id }, include: { workOrder: { include: { patient: true, equipmentCategory: { select: { label: true } }, serviceType: { select: { label: true } } } } } });
   if (!quote) return new Response("Presupuesto no encontrado", { status: 404 });
   const settings = await prisma.settings.findUnique({ where: { id: 1 } });
   const o = quote.workOrder;
@@ -25,9 +24,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     quote: { ...quote, lines: parseQuoteLines(quote.linesJson) },
     order: {
       code: o.code,
-      equipment: [equipmentCategory[o.equipmentCategory], o.equipmentBrand, o.equipmentModel].filter(Boolean).join(" · "),
+      equipment: [o.equipmentCategory.label, o.equipmentBrand, o.equipmentModel].filter(Boolean).join(" · "),
       serialNumber: o.serialNumber,
-      service: serviceType[o.serviceType],
+      service: o.serviceType.label,
       reportedIssue: o.reportedIssue,
       diagnosis: o.diagnosis,
       underWarranty: o.underWarranty,

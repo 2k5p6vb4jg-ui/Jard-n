@@ -37,7 +37,7 @@ export async function globalSearch(term: string) {
     searchPatients(term, 20),
     prisma.workOrder.findMany({
       select: {
-        id: true, code: true, status: true, equipmentCategory: true, equipmentBrand: true, equipmentModel: true,
+        id: true, code: true, status: true, equipmentCategory: { select: { label: true } }, equipmentBrand: true, equipmentModel: true,
         serialNumber: true, customerName: true, reportedIssue: true, receivedAt: true,
         patient: { select: { firstName: true, lastName: true } },
       },

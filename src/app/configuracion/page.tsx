@@ -1,4 +1,4 @@
-import { BarChart3, BellRing, Building2, DatabaseBackup, Footprints, ScanBarcode, FolderDown, HardDriveDownload, ImageIcon, Info, KeyRound, Lock, Plus, Receipt, Save, ScrollText, ShieldAlert, Trash2, Users } from "lucide-react";
+import { BarChart3, BellRing, Building2, DatabaseBackup, ListChecks, ScanBarcode, FolderDown, HardDriveDownload, ImageIcon, Info, KeyRound, Lock, Plus, Receipt, Save, ScrollText, ShieldAlert, Trash2, Users } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { toEurosInput } from "@/lib/forms";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -32,7 +32,7 @@ export default async function SettingsPage() {
         description="Datos de la ortopedia, técnicos, opciones y copias de seguridad"
         actions={
           <>
-            <LinkButton href="/configuracion/plantillas" variant="secondary" icon={Footprints}>Opciones de plantillas</LinkButton>
+            <LinkButton href="/configuracion/opciones" variant="secondary" icon={ListChecks}>Opciones</LinkButton>
             <LinkButton href="/configuracion/registro" variant="secondary" icon={ScrollText}>Registro de actividad</LinkButton>
           </>
         }

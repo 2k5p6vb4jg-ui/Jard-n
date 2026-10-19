@@ -2,17 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import {
-  EquipmentCategory,
-  type InterventionType,
-  LaborMode,
-  PartCategory,
-  Priority,
-  type ServiceType,
-  ServiceType as ServiceTypes,
-  WorkOrderStatus,
-} from "@prisma/client";
+import { type InterventionType, LaborMode, WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { readOption } from "@/lib/options";
 import { WORK_ORDER_FLOW } from "@/lib/labels";
 import { type ActionState, bool, cents, date, FormError, handle, num, oneOf, required, str } from "@/lib/forms";
 
@@ -41,10 +33,13 @@ async function workOrderData(fd: FormData) {
   if (!patientId && !customerName) throw new FormError("Seleccione un paciente o escriba el nombre del cliente.");
 
   // Si el equipo está en trazabilidad, se completan los datos que falten desde su ficha
-  const equipmentCategory = oneOf(fd, "equipmentCategory", Object.values(EquipmentCategory)) ?? product?.category;
-  if (!equipmentCategory) throw new FormError("Indique la categoría del equipo.");
-  const serviceType = oneOf(fd, "serviceType", Object.values(ServiceTypes));
-  if (!serviceType) throw new FormError("Indique el tipo de servicio.");
+  const equipmentCategoryId = (await readOption(fd, "equipmentCategoryId", "EQUIPMENT_CATEGORY", "Categoría", false)) ?? product?.categoryId;
+  if (!equipmentCategoryId) throw new FormError("Indique la categoría del equipo.");
+  const serviceTypeId = await readOption(fd, "serviceTypeId", "SERVICE_TYPE", "Tipo de servicio", true);
+  const priorityId =
+    (await readOption(fd, "priorityId", "PRIORITY", "Prioridad", false)) ??
+    (await prisma.catalogOption.findFirst({ where: { kind: "PRIORITY" }, orderBy: [{ active: "desc" }, { sortOrder: "asc" }] }))?.id;
+  if (!priorityId) throw new FormError("Indique la prioridad.");
 
   const technicianId = str(fd, "technicianId");
   const laborMode = oneOf(fd, "laborMode", Object.values(LaborMode)) ?? "HOURLY";
@@ -67,13 +62,13 @@ async function workOrderData(fd: FormData) {
     customerName: patientId ? null : customerName,
     customerPhone: patientId ? null : str(fd, "customerPhone"),
     productId,
-    equipmentCategory,
+    equipmentCategoryId,
     equipmentBrand: str(fd, "equipmentBrand") ?? product?.brand ?? null,
     equipmentModel: str(fd, "equipmentModel") ?? product?.model ?? null,
     serialNumber: str(fd, "serialNumber") ?? product?.serialNumber ?? null,
     accessories: str(fd, "accessories"),
-    serviceType,
-    priority: oneOf(fd, "priority", Object.values(Priority)) ?? "NORMAL",
+    serviceTypeId,
+    priorityId,
     underWarranty: bool(fd, "underWarranty"),
     reportedIssue: required(fd, "reportedIssue", "Avería / motivo de entrada"),
     diagnosis: str(fd, "diagnosis"),
@@ -120,7 +115,8 @@ export async function updateWorkOrder(id: string, _prev: ActionState, fd: FormDa
 
 // ── Flujo de estados ────────────────────────────────────────────────────────
 
-const INTERVENTION_BY_SERVICE: Record<ServiceType, InterventionType> = {
+/** Tipo de intervención en trazabilidad según la clave del servicio; los servicios añadidos en Ajustes cuentan como reparación. */
+const INTERVENTION_BY_SERVICE: Record<string, InterventionType> = {
   GENERAL_REPAIR: "REPAIR",
   PREVENTIVE_MAINTENANCE: "MAINTENANCE",
   BATTERY_REPLACEMENT: "REPAIR",
@@ -144,7 +140,7 @@ export async function changeStatus(id: string, to: WorkOrderStatus, fd: FormData
   const now = new Date();
 
   await prisma.$transaction(async (tx) => {
-    const wo = await tx.workOrder.findUniqueOrThrow({ where: { id } });
+    const wo = await tx.workOrder.findUniqueOrThrow({ where: { id }, include: { serviceType: { select: { key: true } } } });
     if (!canTransition(wo.status, to)) return;
 
     await tx.workOrder.update({
@@ -173,7 +169,7 @@ export async function changeStatus(id: string, to: WorkOrderStatus, fd: FormData
           data: {
             productId: wo.productId,
             workOrderId: id,
-            type: wo.underWarranty ? "WARRANTY_CLAIM" : INTERVENTION_BY_SERVICE[wo.serviceType],
+            type: wo.underWarranty ? "WARRANTY_CLAIM" : (INTERVENTION_BY_SERVICE[wo.serviceType.key ?? ""] ?? "REPAIR"),
             date: now,
             description: `${wo.code} · ${wo.workDone ?? wo.diagnosis ?? wo.reportedIssue}`,
             underWarranty: wo.underWarranty,
@@ -190,8 +186,7 @@ export async function changeStatus(id: string, to: WorkOrderStatus, fd: FormData
 
 export async function addPart(workOrderId: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
   const res = await handle(async () => {
-    const category = oneOf(fd, "category", Object.values(PartCategory));
-    if (!category) throw new FormError("Seleccione la categoría de la pieza.");
+    const categoryId = await readOption(fd, "categoryId", "PART_CATEGORY", "Categoría de la pieza", true);
     const quantity = num(fd, "quantity") ?? 1;
     if (quantity <= 0) throw new FormError("La cantidad debe ser mayor que cero.");
     const unitPriceCents = cents(fd, "unitPrice");
@@ -199,7 +194,7 @@ export async function addPart(workOrderId: string, _prev: ActionState, fd: FormD
     await prisma.workOrderPart.create({
       data: {
         workOrderId,
-        category,
+        categoryId,
         description: required(fd, "description", "Descripción"),
         reference: str(fd, "reference"),
         quantity,

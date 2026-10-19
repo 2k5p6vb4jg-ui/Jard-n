@@ -75,7 +75,7 @@ src/
     pacientes/           Listado, ficha clínica, alta
     taller/              Reparaciones: órdenes de trabajo por estado, detalle con costes
     plantillas/          Plantillas: listado con buscador, alta/edición, estado y cobro
-    configuracion/plantillas/  Opciones editables de plantillas (tipos, materiales, estados)
+    configuracion/opciones/    Ajustes → Opciones: listas editables de Reparaciones y Plantillas
     trazabilidad/        Productos por nº de serie e histórico de intervenciones
     configuracion/       Datos del negocio y copia de seguridad
     api/backup/          Descarga instantánea consistente de la BD (VACUUM INTO)
@@ -97,7 +97,11 @@ src/
   `CompressionStocking` (perímetros cB…cT y longitudes lA-x, receta / Seguridad Social), `ClinicalDocument`.
   Cada prescripción guarda `deliveredAt` y `nextReviewAt` (indexado) + `renewalStatus` para gestionar el aviso.
 - **Plantillas:** `InsoleOrder` (código `PL-AAAA-NNNN`, cliente, pie, número, fechas, precio, pagado) con tipo,
-  material y estado en `InsoleOrderOption` (tabla editable desde Ajustes; las opciones en uso se desactivan, no se borran).
+  material y estado en `CatalogOption`.
+- **Opciones (`CatalogOption`):** todas las listas de Reparaciones (categoría de equipo, tipo de servicio, categoría de
+  pieza, prioridad, nombre de los estados) y de Plantillas (tipo, material, estado), enlazadas por ID y editables en
+  **Ajustes → Opciones**. Las opciones en uso se desactivan, no se borran: no salen en formularios nuevos pero se siguen
+  viendo en los registros antiguos. Los estados de reparación solo se renombran (su flujo lo fija la app).
 - **Reparaciones:** `WorkOrder` (flujo Entrada → Diagnóstico → Presupuestado → En reparación → Listo → Entregado),
   `WorkOrderPart`, `TimeEntry`, `WorkOrderStatusChange`, `Quote` (instantánea de importes para el PDF), `Technician`.
 - **Trazabilidad:** `TrackedProduct` (nº de serie único, lote, UDI, garantía) y `ProductIntervention`.
@@ -127,7 +131,7 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
 - **Plantillas** (menú propio): listado «En curso» / por estado / todas, buscador sin tildes (cliente, teléfono,
   código, tipo, material), formulario con cliente, tipo, pie, número de pie, material, toma de medidas, entrega
   prevista, estado, precio, pagado y observaciones; cambio de estado y de pago con un toque, aviso de «Retrasada».
-  Tipos, materiales y estados se editan en **Ajustes → Opciones de plantillas** (añadir, renombrar, ordenar,
+  Tipos, materiales y estados se editan en **Ajustes → Opciones → Plantillas** (añadir, renombrar, ordenar,
   desactivar; un estado «final» saca el pedido de «En curso»).
 - **Ficha del cliente:** apartados **Reparaciones** y **Plantillas** con su historial y botón «Nueva», que abre el
   formulario con el cliente ya elegido. La prescripción clínica de plantillas (patologías, correcciones, avisos de

@@ -1,16 +1,16 @@
 import "server-only";
-import type { InsoleOptionKind } from "@prisma/client";
+import type { OptionKind } from "@prisma/client";
 import { prisma } from "./prisma";
 import type { Tone } from "./labels";
 import type { InsoleOrderFormOptions } from "@/components/insoleOrders/InsoleOrderForm";
 
 /** Opciones de tipo, material y estado, en el orden configurado. `active` filtra las desactivadas. */
 export async function getInsoleOptions({ active }: { active?: boolean } = {}) {
-  const all = await prisma.insoleOrderOption.findMany({
+  const all = await prisma.catalogOption.findMany({
     where: active ? { active: true } : undefined,
     orderBy: [{ sortOrder: "asc" }, { label: "asc" }],
   });
-  const of = (kind: InsoleOptionKind) => all.filter((o) => o.kind === kind);
+  const of = (kind: OptionKind) => all.filter((o) => o.kind === kind);
   return { types: of("TYPE"), materials: of("MATERIAL"), statuses: of("STATUS") };
 }
 

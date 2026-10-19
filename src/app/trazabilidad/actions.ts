@@ -2,14 +2,13 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { EquipmentCategory } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { readOption } from "@/lib/options";
 import { addMonths } from "@/lib/dates";
-import { type ActionState, bool, cents, date, FormError, handle, int, oneOf, required, str } from "@/lib/forms";
+import { type ActionState, bool, cents, date, FormError, handle, int, required, str } from "@/lib/forms";
 
-function productData(fd: FormData) {
-  const category = oneOf(fd, "category", Object.values(EquipmentCategory));
-  if (!category) throw new FormError("Indique la categoría del producto.");
+async function productData(fd: FormData) {
+  const categoryId = await readOption(fd, "categoryId", "EQUIPMENT_CATEGORY", "Categoría", true);
   const warrantyMonths = int(fd, "warrantyMonths") ?? 24;
   if (warrantyMonths < 0 || warrantyMonths > 120) throw new FormError("La garantía debe estar entre 0 y 120 meses.");
   const deliveredAt = date(fd, "deliveredAt");
@@ -17,7 +16,7 @@ function productData(fd: FormData) {
     serialNumber: required(fd, "serialNumber", "Número de serie").toUpperCase(),
     lotNumber: str(fd, "lotNumber"),
     udi: str(fd, "udi"),
-    category,
+    categoryId,
     brand: required(fd, "brand", "Marca"),
     model: required(fd, "model", "Modelo"),
     description: str(fd, "description"),
@@ -37,7 +36,7 @@ function productData(fd: FormData) {
 
 export async function saveProduct(productId: string | null, _prev: ActionState, fd: FormData): Promise<ActionState> {
   const res = await handle(async () => {
-    const data = productData(fd);
+    const data = await productData(fd);
     if (productId) {
       await prisma.trackedProduct.update({ where: { id: productId }, data });
       return;

@@ -137,27 +137,6 @@ enum DocumentSource {
   CAMERA // Capturado con la cámara del móvil/tablet
 }
 
-enum EquipmentCategory {
-  MANUAL_WHEELCHAIR // Silla de ruedas manual
-  ELECTRIC_WHEELCHAIR // Silla de ruedas eléctrica
-  MOBILITY_SCOOTER // Scooter de movilidad
-  PATIENT_LIFT // Grúa de traslado
-  WALKER // Andador
-  ORTHOSIS // Órtesis
-  PROSTHESIS // Prótesis
-  MOTOR // Motor / unidad de tracción
-  OTHER
-}
-
-enum ServiceType {
-  GENERAL_REPAIR // Reparación general
-  PREVENTIVE_MAINTENANCE // Mantenimiento preventivo
-  BATTERY_REPLACEMENT // Cambio de baterías
-  CLEANING_DISINFECTION // Limpieza y desinfección
-  CUSTOM_ADJUSTMENT // Ajustes a medida
-  WARRANTY // Intervención en garantía
-}
-
 /// Flujo de la orden de trabajo:
 /// RECEIVED ➔ DIAGNOSIS ➔ QUOTED ➔ IN_REPAIR ➔ READY ➔ DELIVERED (CANCELLED si se rechaza)
 enum WorkOrderStatus {
@@ -170,30 +149,9 @@ enum WorkOrderStatus {
   CANCELLED // Anulado / presupuesto rechazado
 }
 
-enum Priority {
-  LOW
-  NORMAL
-  HIGH
-  URGENT
-}
-
 enum LaborMode {
   HOURLY // Tarifa por hora × horas registradas
   FIXED // Mano de obra a precio cerrado
-}
-
-enum PartCategory {
-  RESIN // Resinas
-  EVA
-  THERMOPLASTIC // Termoplásticos
-  BATTERY // Baterías
-  MOTOR // Motores
-  WHEEL // Ruedas / neumáticos / cámaras
-  SPARE_PART // Recambios
-  UPHOLSTERY // Tapicería / cojines
-  ELECTRONICS // Joystick, centralitas, cableado
-  CONSUMABLE // Consumibles (adhesivos, tornillería…)
-  OTHER
 }
 
 enum QuoteStatus {
@@ -513,17 +471,20 @@ model WorkOrder {
   customerPhone String?
 
   // Equipo
-  productId         String?
-  product           TrackedProduct?   @relation(fields: [productId], references: [id], onDelete: SetNull)
-  equipmentCategory EquipmentCategory
-  equipmentBrand    String?
-  equipmentModel    String?
-  serialNumber      String? // Copia libre si el equipo no está en trazabilidad
-  accessories       String? // Cargador, cojín, reposapiés…
+  productId           String?
+  product             TrackedProduct? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  equipmentCategoryId String
+  equipmentCategory   CatalogOption   @relation("WorkOrderEquipment", fields: [equipmentCategoryId], references: [id], onDelete: Restrict)
+  equipmentBrand      String?
+  equipmentModel      String?
+  serialNumber        String? // Copia libre si el equipo no está en trazabilidad
+  accessories         String? // Cargador, cojín, reposapiés…
 
-  serviceType   ServiceType
+  serviceTypeId String
+  serviceType   CatalogOption   @relation("WorkOrderService", fields: [serviceTypeId], references: [id], onDelete: Restrict)
   status        WorkOrderStatus @default(RECEIVED)
-  priority      Priority        @default(NORMAL)
+  priorityId    String
+  priority      CatalogOption   @relation("WorkOrderPriority", fields: [priorityId], references: [id], onDelete: Restrict)
   underWarranty Boolean         @default(false)
 
   reportedIssue String // Avería según el cliente
@@ -567,12 +528,13 @@ model WorkOrderPart {
   workOrderId String
   workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
 
-  category       PartCategory
+  categoryId     String
+  category       CatalogOption @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   reference      String? // Ref. proveedor
   description    String
-  quantity       Float        @default(1)
-  unit           String       @default("ud") // ud, m, m², kg, l
-  unitCostCents  Int          @default(0) // Coste de compra (margen interno)
+  quantity       Float         @default(1)
+  unit           String        @default("ud") // ud, m, m², kg, l
+  unitCostCents  Int           @default(0) // Coste de compra (margen interno)
   unitPriceCents Int // Precio de venta al cliente
 
   createdAt DateTime @default(now())
@@ -643,32 +605,51 @@ model Quote {
 //  MÓDULO 2b · TALLER DE PLANTILLAS (pedidos de fabricación, entrega y cobro)
 // ----------------------------------------------------------------------------
 
-enum InsoleOptionKind {
+/// Listas de opciones editables desde Ajustes → Opciones.
+enum OptionKind {
+  // Plantillas
   TYPE
   MATERIAL
   STATUS
+  // Reparaciones
+  EQUIPMENT_CATEGORY
+  SERVICE_TYPE
+  PART_CATEGORY
+  PRIORITY
+  WORK_STATUS
 }
 
-/// Opciones editables desde Ajustes para la sección Plantillas (tipo, material y estado).
-/// Una opción en uso no se borra: se desactiva y deja de ofrecerse en los formularios.
-model InsoleOrderOption {
-  id        String           @id @default(cuid())
-  kind      InsoleOptionKind
+/// Opciones editables desde Ajustes → Opciones (Reparaciones y Plantillas).
+/// Una opción en uso no se borra: se desactiva y deja de ofrecerse en los formularios nuevos.
+/// `key` identifica las opciones con significado propio para la app (p. ej. prioridad NORMAL,
+/// servicio WARRANTY, estados de reparación); las añadidas por el usuario no tienen.
+model CatalogOption {
+  id        String     @id @default(cuid())
+  kind      OptionKind
+  key       String?
   label     String
-  sortOrder Int              @default(0)
-  active    Boolean          @default(true)
-  /// Solo estados: el pedido está terminado (entregado, anulado…) y sale de «En curso»
-  isFinal   Boolean          @default(false)
+  sortOrder Int        @default(0)
+  active    Boolean    @default(true)
+  /// Solo estados de plantillas: el pedido está terminado (entregado, anulado…) y sale de «En curso»
+  isFinal   Boolean    @default(false)
 
   typeOrders     InsoleOrder[] @relation("InsoleOrderType")
   materialOrders InsoleOrder[] @relation("InsoleOrderMaterial")
   statusOrders   InsoleOrder[] @relation("InsoleOrderStatus")
 
+  equipmentOrders WorkOrder[]      @relation("WorkOrderEquipment")
+  serviceOrders   WorkOrder[]      @relation("WorkOrderService")
+  priorityOrders  WorkOrder[]      @relation("WorkOrderPriority")
+  parts           WorkOrderPart[]
+  products        TrackedProduct[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([kind, label])
+  @@unique([kind, key])
   @@index([kind, sortOrder])
+  @@map("InsoleOrderOption")
 }
 
 model InsoleOrder {
@@ -680,13 +661,13 @@ model InsoleOrder {
   patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   typeId     String
-  type       InsoleOrderOption  @relation("InsoleOrderType", fields: [typeId], references: [id], onDelete: Restrict)
-  side       Side               @default(BOTH)
+  type       CatalogOption  @relation("InsoleOrderType", fields: [typeId], references: [id], onDelete: Restrict)
+  side       Side           @default(BOTH)
   shoeSize   Float? // Número de pie (talla europea)
   materialId String?
-  material   InsoleOrderOption? @relation("InsoleOrderMaterial", fields: [materialId], references: [id], onDelete: Restrict)
+  material   CatalogOption? @relation("InsoleOrderMaterial", fields: [materialId], references: [id], onDelete: Restrict)
   statusId   String
-  status     InsoleOrderOption  @relation("InsoleOrderStatus", fields: [statusId], references: [id], onDelete: Restrict)
+  status     CatalogOption  @relation("InsoleOrderStatus", fields: [statusId], references: [id], onDelete: Restrict)
 
   measuredAt DateTime? // Toma de medidas
   dueAt      DateTime? // Entrega prevista
@@ -706,10 +687,11 @@ model InsoleOrder {
 // ----------------------------------------------------------------------------
 
 model TrackedProduct {
-  id             String            @id @default(cuid())
-  serialNumber   String            @unique // Obligatorio
+  id             String        @id @default(cuid())
+  serialNumber   String        @unique // Obligatorio
   lotNumber      String? // Lote de fabricación
-  category       EquipmentCategory
+  categoryId     String
+  category       CatalogOption @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   brand          String
   model          String
   description    String?

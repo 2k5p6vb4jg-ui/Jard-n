@@ -3,7 +3,8 @@ import { ChevronRight, FileText, Footprints, ScanBarcode, Search, Users, Wrench 
 import { globalSearch } from "@/lib/search";
 import { formatDate } from "@/lib/dates";
 import { formatEUR } from "@/lib/money";
-import { equipmentCategory, quoteStatus, workOrderStatus } from "@/lib/labels";
+import { quoteStatus, workOrderStatus } from "@/lib/labels";
+import { getStatusLabels } from "@/lib/workOrderOptions";
 import { effectiveQuoteStatus } from "@/lib/quotes";
 import { getInsoleOptions, statusTones } from "@/lib/insoleOrders";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -19,6 +20,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const { q = "" } = await searchParams;
   const r = await globalSearch(q);
   const total = r ? r.patients.length + r.orders.length + r.insoleOrders.length + r.products.length + r.quotes.length : 0;
+  const st = await getStatusLabels();
   const tones = r?.insoleOrders.length ? statusTones((await getInsoleOptions()).statuses) : {};
 
   return (
@@ -61,12 +63,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                   <li key={o.id}>
                     <Link href={`/taller/${o.id}`} className={row}>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium text-slate-800"><span className="font-mono text-sm text-slate-500">{o.code}</span> · {equipmentCategory[o.equipmentCategory]}</p>
+                        <p className="truncate font-medium text-slate-800"><span className="font-mono text-sm text-slate-500">{o.code}</span> · {o.equipmentCategory.label}</p>
                         <p className="truncate text-sm text-slate-500">
                           {o.patient ? `${o.patient.firstName} ${o.patient.lastName}` : o.customerName} · {formatDate(o.receivedAt)}{o.serialNumber && ` · S/N ${o.serialNumber}`}
                         </p>
                       </div>
-                      <Badge tone={workOrderStatus[o.status].tone}>{workOrderStatus[o.status].label}</Badge>
+                      <Badge tone={workOrderStatus[o.status].tone}>{st[o.status]}</Badge>
                     </Link>
                   </li>
                 ))}

@@ -1,7 +1,7 @@
 import { ClipboardList, Euro, PackageSearch, User, Wrench } from "lucide-react";
 import type { WorkOrder } from "@prisma/client";
-import { type ActionState, toDateInput, toEurosInput } from "@/lib/forms";
-import { equipmentCategory, laborMode, priority, serviceType } from "@/lib/labels";
+import { type ActionState, optionChoices, toDateInput, toEurosInput } from "@/lib/forms";
+import { laborMode } from "@/lib/labels";
 import { ActionForm } from "@/components/ui/Form";
 import { CheckboxField, FormSection, MoneyField, NumberField, SelectField, TextAreaField, TextField } from "@/components/ui/Fields";
 
@@ -10,9 +10,12 @@ export interface WorkOrderFormOptions {
   products: { id: string; serialNumber: string; brand: string; model: string; patient: { firstName: string; lastName: string } | null }[];
   technicians: { id: string; name: string }[];
   defaultTaxRate: number;
+  categories: Opt[];
+  services: Opt[];
+  priorities: (Opt & { key: string | null })[];
 }
 
-const priorityOptions = Object.fromEntries(Object.entries(priority).map(([k, v]) => [k, v.label]));
+type Opt = { id: string; label: string; active: boolean };
 
 export function WorkOrderForm({
   action,
@@ -54,7 +57,7 @@ export function WorkOrderForm({
             label: `${p.serialNumber} · ${p.brand} ${p.model}${p.patient ? ` (${p.patient.firstName} ${p.patient.lastName})` : ""}`,
           }))}
         />
-        <SelectField name="equipmentCategory" label="Categoría" options={equipmentCategory} placeholder="Seleccione…" defaultValue={order?.equipmentCategory} />
+        <SelectField name="equipmentCategoryId" label="Categoría" options={optionChoices(options.categories, order?.equipmentCategoryId)} placeholder="Seleccione…" defaultValue={order?.equipmentCategoryId} />
         <TextField name="equipmentBrand" label="Marca" defaultValue={order?.equipmentBrand} />
         <TextField name="equipmentModel" label="Modelo" defaultValue={order?.equipmentModel} />
         <TextField name="serialNumber" label="Nº de serie" defaultValue={order?.serialNumber} />
@@ -62,8 +65,13 @@ export function WorkOrderForm({
       </FormSection>
 
       <FormSection title="Servicio" icon={Wrench}>
-        <SelectField name="serviceType" label="Tipo de servicio" required options={serviceType} placeholder="Seleccione…" defaultValue={order?.serviceType} />
-        <SelectField name="priority" label="Prioridad" options={priorityOptions} defaultValue={order?.priority ?? "NORMAL"} />
+        <SelectField name="serviceTypeId" label="Tipo de servicio" required options={optionChoices(options.services, order?.serviceTypeId)} placeholder="Seleccione…" defaultValue={order?.serviceTypeId} />
+        <SelectField
+          name="priorityId"
+          label="Prioridad"
+          options={optionChoices(options.priorities, order?.priorityId)}
+          defaultValue={order?.priorityId ?? (options.priorities.find((p) => p.key === "NORMAL" && p.active) ?? options.priorities.find((p) => p.active))?.id}
+        />
         <SelectField name="technicianId" label="Técnico asignado" placeholder="— Sin asignar —" options={options.technicians.map((t) => ({ value: t.id, label: t.name }))} defaultValue={order?.technicianId} />
         <TextField name="receivedAt" label="Fecha de entrada" type="date" defaultValue={toDateInput(order?.receivedAt ?? new Date())} />
         <TextField name="promisedAt" label="Fecha comprometida" type="date" defaultValue={toDateInput(order?.promisedAt)} />

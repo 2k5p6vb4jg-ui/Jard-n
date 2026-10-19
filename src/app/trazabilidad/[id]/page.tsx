@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getWorkshopOptions } from "@/lib/workOrderOptions";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ProductForm } from "@/components/products/ProductForm";
 import { saveProduct } from "../actions";
@@ -16,7 +17,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   return (
     <>
       <PageHeader title={`Editar · ${product.serialNumber}`} description={`${product.brand} ${product.model}`} />
-      <ProductForm action={saveProduct.bind(null, id)} product={product} patients={patients} cancelHref="/trazabilidad" />
+      <ProductForm action={saveProduct.bind(null, id)} product={product} patients={patients} categories={(await getWorkshopOptions()).categories} cancelHref="/trazabilidad" />
     </>
   );
 }

@@ -1,7 +1,6 @@
 import { CalendarCheck, Euro, ScanBarcode, User } from "lucide-react";
 import type { TrackedProduct } from "@prisma/client";
-import { type ActionState, toDateInput, toEurosInput } from "@/lib/forms";
-import { equipmentCategory } from "@/lib/labels";
+import { type ActionState, optionChoices, toDateInput, toEurosInput } from "@/lib/forms";
 import { ActionForm } from "@/components/ui/Form";
 import { CheckboxField, FormSection, MoneyField, NumberField, SelectField, TextAreaField, TextField } from "@/components/ui/Fields";
 
@@ -9,11 +8,13 @@ export function ProductForm({
   action,
   product,
   patients,
+  categories,
   cancelHref,
 }: {
   action: (s: ActionState, fd: FormData) => Promise<ActionState>;
   product?: TrackedProduct;
   patients: { id: string; firstName: string; lastName: string; dni: string | null }[];
+  categories: { id: string; label: string; active: boolean }[];
   cancelHref: string;
 }) {
   return (
@@ -22,7 +23,7 @@ export function ProductForm({
         <TextField name="serialNumber" label="Número de serie" required defaultValue={product?.serialNumber} hint="Obligatorio y único" />
         <TextField name="lotNumber" label="Lote de fabricación" defaultValue={product?.lotNumber} />
         <TextField name="udi" label="UDI (identificador de dispositivo)" defaultValue={product?.udi} />
-        <SelectField name="category" label="Categoría" required options={equipmentCategory} placeholder="Seleccione…" defaultValue={product?.category} />
+        <SelectField name="categoryId" label="Categoría" required options={optionChoices(categories, product?.categoryId)} placeholder="Seleccione…" defaultValue={product?.categoryId} />
         <TextField name="brand" label="Marca" required defaultValue={product?.brand} />
         <TextField name="model" label="Modelo" required defaultValue={product?.model} />
         <TextField name="supplier" label="Proveedor" defaultValue={product?.supplier} />

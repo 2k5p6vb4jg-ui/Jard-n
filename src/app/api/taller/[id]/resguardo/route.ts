@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { loadLogo } from "@/lib/branding";
-import { equipmentCategory, serviceType } from "@/lib/labels";
 import { renderReceiptPdf } from "@/lib/pdf/receiptPdf";
 
 export const runtime = "nodejs";
@@ -10,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [o, settings] = await Promise.all([
-    prisma.workOrder.findUnique({ where: { id }, include: { patient: true } }),
+    prisma.workOrder.findUnique({ where: { id }, include: { patient: true, equipmentCategory: { select: { label: true } }, serviceType: { select: { label: true } } } }),
     prisma.settings.findUnique({ where: { id: 1 } }),
   ]);
   if (!o) return new Response("Orden no encontrada", { status: 404 });
@@ -22,10 +21,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       code: o.code,
       receivedAt: o.receivedAt,
       promisedAt: o.promisedAt,
-      equipment: [equipmentCategory[o.equipmentCategory], o.equipmentBrand, o.equipmentModel].filter(Boolean).join(" · "),
+      equipment: [o.equipmentCategory.label, o.equipmentBrand, o.equipmentModel].filter(Boolean).join(" · "),
       serialNumber: o.serialNumber,
       accessories: o.accessories,
-      service: serviceType[o.serviceType],
+      service: o.serviceType.label,
       reportedIssue: o.reportedIssue,
       underWarranty: o.underWarranty,
     },

@@ -29,7 +29,7 @@ export async function getStats(months = 12) {
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
 
-  const [settings, orders, insoles, stockings, quotes, patients, byCategory, active] = await Promise.all([
+  const [settings, orders, insoles, stockings, quotes, patients, byCategory, active, categories] = await Promise.all([
     prisma.settings.findUnique({ where: { id: 1 }, select: { defaultHourlyRateCents: true } }),
     prisma.workOrder.findMany({
       where: { status: "DELIVERED", deliveredAt: { gte: from } },
@@ -39,8 +39,9 @@ export async function getStats(months = 12) {
     prisma.compressionStocking.findMany({ where: { status: "DELIVERED", deliveredAt: { gte: from } }, select: { deliveredAt: true, priceCents: true } }),
     prisma.quote.findMany({ where: { issuedAt: { gte: from } }, select: { issuedAt: true, status: true } }),
     prisma.patient.findMany({ where: { createdAt: { gte: from } }, select: { createdAt: true } }),
-    prisma.workOrder.groupBy({ by: ["equipmentCategory"], where: { receivedAt: { gte: from } }, _count: { _all: true } }),
+    prisma.workOrder.groupBy({ by: ["equipmentCategoryId"], where: { receivedAt: { gte: from } }, _count: { _all: true } }),
     prisma.workOrder.count({ where: { status: { notIn: ["DELIVERED", "CANCELLED"] } } }),
+    prisma.catalogOption.findMany({ where: { kind: "EQUIPMENT_CATEGORY" }, select: { id: true, label: true } }),
   ]);
 
   const series: MonthStat[] = Array.from({ length: months }, (_, i) => {
@@ -105,6 +106,6 @@ export async function getStats(months = 12) {
       newPatients: sum((m) => m.newPatients),
       activeOrders: active,
     },
-    byCategory: byCategory.map((c) => ({ category: c.equipmentCategory, count: c._count._all })).sort((a, b) => b.count - a.count),
+    byCategory: byCategory.map((c) => ({ category: categories.find((k) => k.id === c.equipmentCategoryId)?.label ?? "—", count: c._count._all })).sort((a, b) => b.count - a.count),
   };
 }

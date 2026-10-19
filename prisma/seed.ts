@@ -7,7 +7,7 @@
  * Las fechas se calculan respecto a HOY para que el panel muestre siempre
  * avisos de renovación vencidos y próximos a vencer.
  */
-import { PrismaClient, type PartCategory, type Prisma, type WorkOrderStatus } from "@prisma/client";
+import { PrismaClient, type OptionKind, type Prisma, type WorkOrderStatus } from "@prisma/client";
 import { demoPdf, footprintPng, removeFiles, writeDemoFile } from "./demo-files";
 import { buildQuoteSnapshot } from "../src/lib/quotes";
 
@@ -54,6 +54,15 @@ async function reset() {
 
 async function main() {
   await reset();
+
+  // Opciones de Reparaciones (las crea la migración; se buscan por su clave fija)
+  const keyed = await prisma.catalogOption.findMany({ where: { key: { not: null } }, select: { id: true, kind: true, key: true } });
+  const ref = (kind: OptionKind) => (key: string) => {
+    const o = keyed.find((k) => k.kind === kind && k.key === key);
+    if (!o) throw new Error(`Falta la opción ${kind}/${key}: ejecute «npx prisma migrate deploy».`);
+    return o.id;
+  };
+  const [eq, sv, pc, pr] = [ref("EQUIPMENT_CATEGORY"), ref("SERVICE_TYPE"), ref("PART_CATEGORY"), ref("PRIORITY")];
 
   // ── Configuración del negocio ────────────────────────────────────────────
   await prisma.settings.create({
@@ -247,7 +256,7 @@ async function main() {
   // ── Trazabilidad: productos de alto valor ───────────────────────────────
   const sillaElectrica = await prisma.trackedProduct.create({
     data: {
-      serialNumber: "INV-ESPRIT-2024-77812", lotNumber: "L2024-09", category: "ELECTRIC_WHEELCHAIR",
+      serialNumber: "INV-ESPRIT-2024-77812", lotNumber: "L2024-09", categoryId: eq("ELECTRIC_WHEELCHAIR"),
       brand: "Invacare", model: "Esprit Action 4NG", description: "Silla eléctrica, asiento 45 cm, joystick derecho",
       supplier: "Invacare España", patientId: mariaJose.id, isPublicHealth: true,
       purchasePriceCents: 210000, salePriceCents: 289000,
@@ -256,7 +265,7 @@ async function main() {
   });
   const scooter = await prisma.trackedProduct.create({
     data: {
-      serialNumber: "SCT-VEC4-23-00519", lotNumber: "B23-11", category: "MOBILITY_SCOOTER",
+      serialNumber: "SCT-VEC4-23-00519", lotNumber: "B23-11", categoryId: eq("MOBILITY_SCOOTER"),
       brand: "Sunrise Medical", model: "Sterling S425", supplier: "Sunrise Medical S.L.",
       patientId: antonio.id, purchasePriceCents: 145000, salePriceCents: 199000,
       deliveredAt: daysAgo(800), warrantyMonths: 24, warrantyUntil: addMonths(daysAgo(800), 24),
@@ -264,7 +273,7 @@ async function main() {
   });
   const protesis = await prisma.trackedProduct.create({
     data: {
-      serialNumber: "OTB-1C30-501223", lotNumber: "OB-5512", category: "PROSTHESIS",
+      serialNumber: "OTB-1C30-501223", lotNumber: "OB-5512", categoryId: eq("PROSTHESIS"),
       brand: "Ottobock", model: "Trias 1C30", description: "Pie protésico de carbono, talla 26",
       patientId: manuel.id, isPublicHealth: true, deliveredAt: daysAgo(500), warrantyMonths: 36,
       warrantyUntil: addMonths(daysAgo(500), 36),
@@ -272,7 +281,7 @@ async function main() {
   });
   const grua = await prisma.trackedProduct.create({
     data: {
-      serialNumber: "GR-BIRDIE-182233", category: "PATIENT_LIFT", brand: "Invacare", model: "Birdie Evo",
+      serialNumber: "GR-BIRDIE-182233", categoryId: eq("PATIENT_LIFT"), brand: "Invacare", model: "Birdie Evo",
       patientId: francisco.id, deliveredAt: daysAgo(90), warrantyMonths: 24, warrantyUntil: addMonths(daysAgo(90), 24),
       nextServiceAt: daysAhead(275),
     },
@@ -296,8 +305,8 @@ async function main() {
 
   const orders: {
     status: WorkOrderStatus;
-    data: Omit<Prisma.WorkOrderUncheckedCreateInput, "status" | "technicianId">;
-    parts?: { category: PartCategory; description: string; quantity: number; unitCostCents: number; unitPriceCents: number; unit?: string }[];
+    data: Omit<Prisma.WorkOrderUncheckedCreateInput, "status" | "technicianId" | "priorityId"> & { priorityId?: string };
+    parts?: { categoryId: string; description: string; quantity: number; unitCostCents: number; unitPriceCents: number; unit?: string }[];
     minutes?: number[];
     technicianId?: string;
   }[] = [
@@ -305,15 +314,15 @@ async function main() {
       status: "IN_REPAIR",
       technicianId: tecMario.id,
       data: {
-        code: code(), patientId: mariaJose.id, productId: sillaElectrica.id, equipmentCategory: "ELECTRIC_WHEELCHAIR",
+        code: code(), patientId: mariaJose.id, productId: sillaElectrica.id, equipmentCategoryId: eq("ELECTRIC_WHEELCHAIR"),
         equipmentBrand: "Invacare", equipmentModel: "Esprit Action 4NG", serialNumber: sillaElectrica.serialNumber,
-        serviceType: "BATTERY_REPLACEMENT", priority: "HIGH", accessories: "Cargador original",
+        serviceTypeId: sv("BATTERY_REPLACEMENT"), priorityId: pr("HIGH"), accessories: "Cargador original",
         reportedIssue: "La silla pierde autonomía: no llega a 5 km.", diagnosis: "Baterías AGM 50Ah degradadas (capacidad 38%).",
         laborRateCents: 3800, receivedAt: daysAgo(4), promisedAt: daysAhead(1),
       },
       parts: [
-        { category: "BATTERY", description: "Batería AGM 12V 50Ah", quantity: 2, unitCostCents: 9800, unitPriceCents: 14900 },
-        { category: "CONSUMABLE", description: "Terminales y bridas", quantity: 1, unitCostCents: 300, unitPriceCents: 800 },
+        { categoryId: pc("BATTERY"), description: "Batería AGM 12V 50Ah", quantity: 2, unitCostCents: 9800, unitPriceCents: 14900 },
+        { categoryId: pc("CONSUMABLE"), description: "Terminales y bridas", quantity: 1, unitCostCents: 300, unitPriceCents: 800 },
       ],
       minutes: [45, 30],
     },
@@ -321,23 +330,23 @@ async function main() {
       status: "QUOTED",
       technicianId: tecMario.id,
       data: {
-        code: code(), patientId: antonio.id, productId: scooter.id, equipmentCategory: "MOBILITY_SCOOTER",
+        code: code(), patientId: antonio.id, productId: scooter.id, equipmentCategoryId: eq("MOBILITY_SCOOTER"),
         equipmentBrand: "Sunrise Medical", equipmentModel: "Sterling S425", serialNumber: scooter.serialNumber,
-        serviceType: "GENERAL_REPAIR", reportedIssue: "Ruido metálico en rueda trasera y freno flojo.",
+        serviceTypeId: sv("GENERAL_REPAIR"), reportedIssue: "Ruido metálico en rueda trasera y freno flojo.",
         diagnosis: "Rodamiento trasero dañado y zapata de freno desgastada.", laborRateCents: 3800, receivedAt: daysAgo(3),
       },
       parts: [
-        { category: "WHEEL", description: "Rueda trasera neumática 13\"", quantity: 1, unitCostCents: 4200, unitPriceCents: 6900 },
-        { category: "SPARE_PART", description: "Kit rodamientos eje trasero", quantity: 1, unitCostCents: 1800, unitPriceCents: 3200 },
-        { category: "SPARE_PART", description: "Zapata de freno electromagnético", quantity: 1, unitCostCents: 3500, unitPriceCents: 5500 },
+        { categoryId: pc("WHEEL"), description: "Rueda trasera neumática 13\"", quantity: 1, unitCostCents: 4200, unitPriceCents: 6900 },
+        { categoryId: pc("SPARE_PART"), description: "Kit rodamientos eje trasero", quantity: 1, unitCostCents: 1800, unitPriceCents: 3200 },
+        { categoryId: pc("SPARE_PART"), description: "Zapata de freno electromagnético", quantity: 1, unitCostCents: 3500, unitPriceCents: 5500 },
       ],
       minutes: [30],
     },
     {
       status: "RECEIVED",
       data: {
-        code: code(), customerName: "Residencia Los Naranjos", customerPhone: "961 222 333", equipmentCategory: "MANUAL_WHEELCHAIR",
-        equipmentBrand: "Breezy", equipmentModel: "Premier", serviceType: "PREVENTIVE_MAINTENANCE", priority: "LOW",
+        code: code(), customerName: "Residencia Los Naranjos", customerPhone: "961 222 333", equipmentCategoryId: eq("MANUAL_WHEELCHAIR"),
+        equipmentBrand: "Breezy", equipmentModel: "Premier", serviceTypeId: sv("PREVENTIVE_MAINTENANCE"), priorityId: pr("LOW"),
         reportedIssue: "Revisión periódica de 4 sillas (lote residencia). Ésta: freno derecho no bloquea.", receivedAt: daysAgo(0),
       },
     },
@@ -345,9 +354,9 @@ async function main() {
       status: "DIAGNOSIS",
       technicianId: tecLucia.id,
       data: {
-        code: code(), patientId: francisco.id, productId: grua.id, equipmentCategory: "PATIENT_LIFT",
-        equipmentBrand: "Invacare", equipmentModel: "Birdie Evo", serialNumber: grua.serialNumber, serviceType: "WARRANTY",
-        underWarranty: true, priority: "URGENT", reportedIssue: "El actuador no sube con carga.", receivedAt: daysAgo(1), promisedAt: daysAhead(2),
+        code: code(), patientId: francisco.id, productId: grua.id, equipmentCategoryId: eq("PATIENT_LIFT"),
+        equipmentBrand: "Invacare", equipmentModel: "Birdie Evo", serialNumber: grua.serialNumber, serviceTypeId: sv("WARRANTY"),
+        underWarranty: true, priorityId: pr("URGENT"), reportedIssue: "El actuador no sube con carga.", receivedAt: daysAgo(1), promisedAt: daysAhead(2),
       },
       minutes: [20],
     },
@@ -355,34 +364,34 @@ async function main() {
       status: "READY",
       technicianId: tecLucia.id,
       data: {
-        code: code(), patientId: manuel.id, productId: protesis.id, equipmentCategory: "PROSTHESIS",
+        code: code(), patientId: manuel.id, productId: protesis.id, equipmentCategoryId: eq("PROSTHESIS"),
         equipmentBrand: "Ottobock", equipmentModel: "Trias 1C30", serialNumber: protesis.serialNumber,
-        serviceType: "CUSTOM_ADJUSTMENT", laborMode: "FIXED", laborFixedCents: 4500,
+        serviceTypeId: sv("CUSTOM_ADJUSTMENT"), laborMode: "FIXED", laborFixedCents: 4500,
         reportedIssue: "Molestia en encaje tras pérdida de peso.", diagnosis: "Holgura en encaje. Añadir almohadillado.",
         workDone: "Almohadillado interior de encaje y revisión de alineación.", receivedAt: daysAgo(6), completedAt: daysAgo(1),
       },
-      parts: [{ category: "THERMOPLASTIC", description: "Lámina Pe-Lite 5 mm", quantity: 0.25, unit: "m²", unitCostCents: 2400, unitPriceCents: 4000 }],
+      parts: [{ categoryId: pc("THERMOPLASTIC"), description: "Lámina Pe-Lite 5 mm", quantity: 0.25, unit: "m²", unitCostCents: 2400, unitPriceCents: 4000 }],
     },
     {
       status: "DELIVERED",
       technicianId: tecMario.id,
       data: {
-        code: code(), customerName: "Pedro Llorens", customerPhone: "699 000 111", equipmentCategory: "WALKER",
-        equipmentBrand: "Drive", equipmentModel: "Nitro", serviceType: "CLEANING_DISINFECTION", laborMode: "FIXED", laborFixedCents: 2500,
+        code: code(), customerName: "Pedro Llorens", customerPhone: "699 000 111", equipmentCategoryId: eq("WALKER"),
+        equipmentBrand: "Drive", equipmentModel: "Nitro", serviceTypeId: sv("CLEANING_DISINFECTION"), laborMode: "FIXED", laborFixedCents: 2500,
         reportedIssue: "Limpieza y desinfección para reutilizar.", workDone: "Desinfección completa y cambio de contera.",
         receivedAt: daysAgo(12), completedAt: daysAgo(10), deliveredAt: daysAgo(9),
       },
-      parts: [{ category: "SPARE_PART", description: "Contera de goma", quantity: 2, unitCostCents: 150, unitPriceCents: 400 }],
+      parts: [{ categoryId: pc("SPARE_PART"), description: "Contera de goma", quantity: 2, unitCostCents: 150, unitPriceCents: 400 }],
     },
     {
       status: "IN_REPAIR",
       technicianId: tecLucia.id,
       data: {
-        code: code(), patientId: elena.id, equipmentCategory: "ORTHOSIS", serviceType: "CUSTOM_ADJUSTMENT",
+        code: code(), patientId: elena.id, equipmentCategoryId: eq("ORTHOSIS"), serviceTypeId: sv("CUSTOM_ADJUSTMENT"),
         equipmentModel: "DAFO a medida (bilateral)", reportedIssue: "Roza en maléolo interno izquierdo.",
         diagnosis: "Termoconformar zona maleolar.", laborRateCents: 3500, receivedAt: daysAgo(2), promisedAt: daysAhead(3),
       },
-      parts: [{ category: "EVA", description: "EVA 3 mm forro", quantity: 1, unitCostCents: 200, unitPriceCents: 600 }],
+      parts: [{ categoryId: pc("EVA"), description: "EVA 3 mm forro", quantity: 1, unitCostCents: 200, unitPriceCents: 600 }],
       minutes: [25],
     },
   ];
@@ -394,6 +403,7 @@ async function main() {
     const wo = await prisma.workOrder.create({
       data: {
         ...o.data,
+        priorityId: o.data.priorityId ?? pr("NORMAL"),
         status: o.status,
         technicianId: o.technicianId,
         parts: o.parts ? { create: o.parts } : undefined,
@@ -444,7 +454,7 @@ async function main() {
 
   // ── Plantillas: fabricación, entrega y cobro ────────────────────────────
   // Las opciones (tipo, material, estado) las crea la migración y se editan en Ajustes
-  const opts = await prisma.insoleOrderOption.findMany({ orderBy: { sortOrder: "asc" } });
+  const opts = await prisma.catalogOption.findMany({ orderBy: { sortOrder: "asc" } });
   const opt = (kind: "TYPE" | "MATERIAL" | "STATUS", n: number) => opts.filter((o) => o.kind === kind)[n] ?? opts.find((o) => o.kind === kind)!;
   if (opts.some((o) => o.kind === "TYPE") && opts.some((o) => o.kind === "STATUS")) {
     const insoleOrders: { patient: { id: string }; type: number; material: number | null; status: number; side?: "LEFT" | "RIGHT" | "BOTH"; shoeSize: number; measured: number; due: number; price: number; paid: boolean; notes?: string }[] = [
@@ -505,10 +515,10 @@ async function main() {
       const minutes = 30 + Math.floor(rnd() * 150);
       await prisma.workOrder.create({
         data: {
-          code: code(), patientId: pick(historic).id, equipmentCategory: category, serviceType: pick([...services]),
+          code: code(), patientId: pick(historic).id, equipmentCategoryId: eq(category), serviceTypeId: sv(pick([...services])), priorityId: pr("NORMAL"),
           status: "DELIVERED", reportedIssue: "Revisión / reparación (histórico de ejemplo).", workDone: "Trabajo completado.",
           technicianId: pick([tecMario.id, tecLucia.id]), laborRateCents: 3800, receivedAt: received, completedAt: delivered, deliveredAt: delivered,
-          parts: { create: [{ category: "SPARE_PART", description: "Recambio (ejemplo)", quantity: 1 + Math.floor(rnd() * 2), unitCostCents: 1500, unitPriceCents: 2500 + Math.floor(rnd() * 9000) }] },
+          parts: { create: [{ categoryId: pc("SPARE_PART"), description: "Recambio (ejemplo)", quantity: 1 + Math.floor(rnd() * 2), unitCostCents: 1500, unitPriceCents: 2500 + Math.floor(rnd() * 9000) }] },
           timeEntries: { create: { technicianId: tecMario.id, startedAt: received, endedAt: new Date(received.getTime() + minutes * 60_000), minutes } },
           statusHistory: { create: [{ toStatus: "RECEIVED", changedAt: received }, { fromStatus: "READY", toStatus: "DELIVERED", changedAt: delivered }] },
         },

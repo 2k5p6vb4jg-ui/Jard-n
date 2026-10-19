@@ -1,6 +1,6 @@
 import { Euro, Footprints, User } from "lucide-react";
 import type { InsoleOrder } from "@prisma/client";
-import { type ActionState, toDateInput, toEurosInput } from "@/lib/forms";
+import { type ActionState, optionChoices, toDateInput, toEurosInput } from "@/lib/forms";
 import { side } from "@/lib/labels";
 import { ActionForm } from "@/components/ui/Form";
 import { CheckboxField, FormSection, MoneyField, NumberField, SelectField, TextAreaField, TextField } from "@/components/ui/Fields";
@@ -14,9 +14,7 @@ export interface InsoleOrderFormOptions {
   statuses: Opt[];
 }
 
-/** Las opciones desactivadas solo se muestran si el pedido ya las tiene (para no perder el dato al editar). */
-const choices = (list: Opt[], current?: string | null) =>
-  list.filter((o) => o.active || o.id === current).map((o) => ({ value: o.id, label: o.active ? o.label : `${o.label} (desactivada)` }));
+const choices = optionChoices;
 
 export function InsoleOrderForm({
   action,

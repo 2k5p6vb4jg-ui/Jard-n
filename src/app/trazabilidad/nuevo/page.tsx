@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getWorkshopOptions } from "@/lib/workOrderOptions";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ProductForm } from "@/components/products/ProductForm";
 import { saveProduct } from "../actions";
@@ -10,7 +11,7 @@ export default async function NewProductPage() {
   return (
     <>
       <PageHeader title="Nuevo producto de alto valor" description="Sillas, scooters, grúas, motores, prótesis…" />
-      <ProductForm action={saveProduct.bind(null, null)} patients={patients} cancelHref="/trazabilidad" />
+      <ProductForm action={saveProduct.bind(null, null)} patients={patients} categories={(await getWorkshopOptions()).categories} cancelHref="/trazabilidad" />
     </>
   );
 }

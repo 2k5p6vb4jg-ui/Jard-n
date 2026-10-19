@@ -1,7 +1,6 @@
 import { BarChart3, CalendarClock, Clock, FileCheck2, Footprints, Info, Users, Wrench } from "lucide-react";
 import { getStats } from "@/lib/stats";
 import { formatEUR } from "@/lib/money";
-import { equipmentCategory } from "@/lib/labels";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { BarChart } from "@/components/charts/BarChart";
@@ -77,7 +76,7 @@ export default async function StatsPage() {
             {s.byCategory.length === 0 && <li className="text-sm text-slate-500">Sin órdenes en este periodo.</li>}
             {s.byCategory.map((c) => (
               <li key={c.category} className="grid grid-cols-[10rem_1fr_2.5rem] items-center gap-3 text-sm sm:grid-cols-[14rem_1fr_3rem]">
-                <span className="truncate text-slate-700">{equipmentCategory[c.category]}</span>
+                <span className="truncate text-slate-700">{c.category}</span>
                 <span className="block h-4 rounded-r-[4px] bg-teal-600" style={{ width: `${(c.count / maxCat) * 100}%` }} />
                 <span className="text-right font-medium text-slate-700">{c.count}</span>
               </li>
