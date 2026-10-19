@@ -6,6 +6,7 @@ import { Side } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import { readOption } from "@/lib/options";
+import { deletePhotoFolder } from "@/lib/storage";
 import { nextInsoleOrderCode } from "@/lib/insoleOrders";
 import { type ActionState, bool, cents, date, FormError, handle, num, oneOf, required, str } from "@/lib/forms";
 
@@ -84,7 +85,8 @@ export async function togglePaid(id: string) {
 }
 
 export async function deleteInsoleOrder(id: string) {
-  const order = await prisma.insoleOrder.delete({ where: { id } });
+  const order = await prisma.insoleOrder.delete({ where: { id } }); // en cascada: sus fotos
+  await deletePhotoFolder("plantillas", id);
   await audit("DELETE", "InsoleOrder", id, order.code);
   refresh(undefined, order.patientId);
   redirect("/plantillas");

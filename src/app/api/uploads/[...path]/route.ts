@@ -4,10 +4,12 @@ import { resolveUploadPath } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
-/** Sirve adjuntos clínicos SOLO si están registrados en la BD (nunca listado de carpeta). */
+/** Sirve adjuntos clínicos y fotos SOLO si están registrados en la BD (nunca listado de carpeta). */
 export async function GET(req: Request, { params }: { params: Promise<{ path: string[] }> }) {
   const storagePath = (await params).path.join("/");
-  const doc = await prisma.clinicalDocument.findUnique({ where: { storagePath } });
+  const doc =
+    (await prisma.clinicalDocument.findUnique({ where: { storagePath }, select: { mimeType: true, originalName: true } })) ??
+    (await prisma.photo.findUnique({ where: { storagePath }, select: { mimeType: true } }).then((p) => p && { ...p, originalName: storagePath.split("/").pop()! }));
   if (!doc) return new Response("No encontrado", { status: 404 });
 
   try {

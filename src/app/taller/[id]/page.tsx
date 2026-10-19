@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Ban,
+  Camera,
   Check,
   Clock,
   Download,
@@ -42,6 +43,7 @@ import { SubmitButton } from "@/components/ui/Form";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { InlineForm } from "@/components/ui/InlineForm";
 import { Elapsed } from "@/components/workshop/Elapsed";
+import { PhotoGallery } from "@/components/ui/PhotoGallery";
 import { addManualTime, addPart, changeStatus, deletePart, deleteTimeEntry, startTimer, stopTimer } from "../actions";
 import { createQuote, setQuoteStatus } from "../quotes";
 import { effectiveQuoteStatus } from "@/lib/quotes";
@@ -64,6 +66,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
         timeEntries: { include: { technician: { select: { name: true } } }, orderBy: { startedAt: "desc" } },
         statusHistory: { orderBy: { changedAt: "asc" } },
         quotes: { orderBy: { issuedAt: "desc" } },
+        photos: { orderBy: { createdAt: "asc" } },
       },
     }),
     prisma.settings.findUnique({ where: { id: 1 } }),
@@ -213,6 +216,12 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
                 </div>
               )}
             </dl>
+          </Card>
+
+          {/* ── Fotos ──────────────────────────────────────────────────── */}
+          <Card>
+            <CardHeader title="Fotos" icon={Camera} subtitle="Estado del equipo a la entrada, piezas, trabajo terminado…" />
+            <PhotoGallery photos={order.photos.map((p) => ({ id: p.id, url: `/api/uploads/${p.storagePath}` }))} uploadUrl={`/api/fotos?reparacion=${order.id}`} />
           </Card>
 
           {/* ── Piezas ─────────────────────────────────────────────────── */}

@@ -4,32 +4,12 @@ import { startTransition, useActionState, useEffect, useRef, useState } from "re
 import { AlertCircle, Camera, CheckCircle2, FileText, Loader2, Upload, X } from "lucide-react";
 import type { ActionState } from "@/lib/forms";
 import { documentType } from "@/lib/labels";
+import { shrinkImage } from "@/lib/images";
 
 type Picked = { key: number; file: File; camera: boolean; preview: string | null };
 
 const ACCEPT = "application/pdf,image/jpeg,image/png,image/webp,image/heic,.csv,.json,.zip";
 const MAX_SIDE = 2400; // px: suficiente para ver detalle de una huella, ~5-10 veces menos peso
-
-/**
- * Reduce fotos grandes del móvil antes de enviarlas por la Wi-Fi.
- * Si el navegador no puede decodificar la imagen (p. ej. HEIC fuera de Safari) se envía la original.
- */
-async function shrinkImage(file: File, name: string): Promise<File> {
-  if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size < 1_500_000) return new File([file], name, { type: file.type });
-  try {
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(bitmap.width * scale);
-    canvas.height = Math.round(bitmap.height * scale);
-    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", 0.88));
-    if (!blob || blob.size >= file.size) return new File([file], name, { type: file.type });
-    return new File([blob], name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" });
-  } catch {
-    return new File([file], name, { type: file.type });
-  }
-}
 
 const stamp = () => new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
 
@@ -65,7 +45,7 @@ export function DocumentUploader({
       [...list].map(async (f) => {
         // Las fotos de cámara llegan todas como "image.jpg": se renombran para distinguirlas
         const name = camera ? `foto-${stamp()}-${++counter.current}.jpg` : f.name;
-        const file = await shrinkImage(f, name);
+        const file = await shrinkImage(f, name, MAX_SIDE, 1_500_000);
         return { key: ++counter.current, file, camera, preview: file.type.startsWith("image/") && file.type !== "image/heic" ? URL.createObjectURL(file) : null };
       }),
     );

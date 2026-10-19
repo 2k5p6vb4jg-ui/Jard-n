@@ -144,6 +144,10 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
   funciona sin HTTPS) y subida de PDF, imágenes o datos exportados del software de pisada. Las fotos
   grandes se reducen en el propio dispositivo antes de enviarse. Galería con filtros, visor a pantalla
   completa, descarga y borrado. Archivos en `uploads/<paciente>/`, servidos solo si están registrados.
+- **Fotos** en cada reparación y cada plantilla: «Añadir foto» (en el móvil, cámara o galería), varias por
+  registro, reducidas en el propio dispositivo a 1600 px, con barra de progreso y aviso si falla. Miniaturas, visor a
+  pantalla completa y borrado con confirmación. Se guardan en `uploads/fotos/` (entran en las copias de seguridad y en
+  la exportación RGPD) y se borran al borrar el registro.
 - **Presupuestos en PDF:** se generan desde la orden con copia fija de importes (`PRES-AAAA-NNNN`),
   con datos de la ortopedia, cliente, equipo, desglose, IVA, validez, firma y pie legal en cada página.
   Estados: borrador → entregado → aceptado (la orden pasa a «En reparación») o rechazado; caducan solos.

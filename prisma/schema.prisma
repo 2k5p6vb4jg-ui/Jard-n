@@ -516,6 +516,7 @@ model WorkOrder {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  photos    Photo[]
 
   @@index([status])
   @@index([patientId])
@@ -675,11 +676,30 @@ model InsoleOrder {
   paid       Boolean   @default(false)
   notes      String?
 
+  photos Photo[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([patientId])
   @@index([statusId])
+}
+
+/// Fotos de una reparación o de unas plantillas (reducidas en el dispositivo a ~1600 px).
+/// Archivos en uploads/fotos/<reparaciones|plantillas>/<id>/; al borrar el registro se borran las fotos.
+model Photo {
+  id            String       @id @default(cuid())
+  workOrderId   String?
+  workOrder     WorkOrder?   @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  insoleOrderId String?
+  insoleOrder   InsoleOrder? @relation(fields: [insoleOrderId], references: [id], onDelete: Cascade)
+  storagePath   String       @unique
+  mimeType      String
+  sizeBytes     Int
+  createdAt     DateTime     @default(now())
+
+  @@index([workOrderId])
+  @@index([insoleOrderId])
 }
 
 // ----------------------------------------------------------------------------

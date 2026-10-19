@@ -7,7 +7,7 @@ import { ZipArchive, type ZipEntryData } from "archiver";
 import { prisma } from "./prisma";
 import { formatDate } from "./dates";
 import { formatEUR } from "./money";
-import { resolveUploadPath, UPLOADS_ROOT } from "./storage";
+import { deletePhotoFolder, resolveUploadPath, UPLOADS_ROOT } from "./storage";
 import { getStatusLabels } from "./workOrderOptions";
 import { renderTextPdf, type TextSection } from "./pdf/textPdf";
 import {
@@ -32,10 +32,10 @@ export async function collectPatientData(patientId: string) {
       stockings: { orderBy: { measuredAt: "asc" } },
       documents: { orderBy: { createdAt: "asc" } },
       workOrders: {
-        include: { parts: { include: { category: true } }, quotes: true, statusHistory: true, equipmentCategory: true, serviceType: true, priority: true },
+        include: { parts: { include: { category: true } }, quotes: true, statusHistory: true, equipmentCategory: true, serviceType: true, priority: true, photos: true },
         orderBy: { receivedAt: "asc" },
       },
-      insoleOrders: { include: { type: true, material: true, status: true }, orderBy: { createdAt: "asc" } },
+      insoleOrders: { include: { type: true, material: true, status: true, photos: true }, orderBy: { createdAt: "asc" } },
       products: { include: { category: true, interventions: { orderBy: { date: "asc" } } } },
     },
   });
@@ -152,6 +152,7 @@ export async function writePatientExport(patientId: string, output: Writable): P
       "- informe-datos-personales.pdf: resumen legible de todos los datos.",
       "- datos.json: los mismos datos en formato estructurado y reutilizable.",
       "- documentos/: estudios de pisada, fotos de huellas, recetas y demás archivos.",
+      "- fotos/: fotos de sus reparaciones y plantillas.",
     ].join("\r\n"),
     { name: "LEEME.txt" },
   );
@@ -166,6 +167,17 @@ export async function writePatientExport(patientId: string, output: Writable): P
       archive.file(resolveUploadPath(d.storagePath), { name: `documentos/${name}`, store: true } as ZipEntryData);
     } catch {
       // Archivo no presente en disco: queda reflejado en el informe y en datos.json
+    }
+  }
+  // Fotos de sus reparaciones y plantillas
+  for (const [code, photos] of [...p.workOrders, ...p.insoleOrders].map((o) => [o.code, o.photos] as const)) {
+    for (const [i, ph] of photos.entries()) {
+      try {
+        await fsp.access(resolveUploadPath(ph.storagePath));
+        archive.file(resolveUploadPath(ph.storagePath), { name: `fotos/${code}-${i + 1}${path.extname(ph.storagePath)}`, store: true } as ZipEntryData);
+      } catch {
+        // Foto no presente en disco
+      }
     }
   }
   await archive.finalize();
@@ -210,6 +222,9 @@ export async function erasePatient(patientId: string) {
     }),
     prisma.patient.delete({ where: { id: patientId } }), // en cascada: prescripciones, plantillas, medias y documentos
   ]);
+
+  // Fotos de sus plantillas (las filas se borran en cascada con la ficha)
+  for (const id of insoleOrderIds) await deletePhotoFolder("plantillas", id);
 
   // Archivos del paciente (carpeta uploads/<id>/)
   const dir = path.join(UPLOADS_ROOT, patientId);

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Check, CircleDollarSign, Footprints, Pencil, Phone, Plus, RefreshCw, Trash2, User } from "lucide-react";
+import { Camera, Check, CircleDollarSign, Footprints, Pencil, Phone, Plus, RefreshCw, Trash2, User } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/dates";
 import { formatEUR } from "@/lib/money";
@@ -12,12 +12,13 @@ import { LinkButton } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SubmitButton } from "@/components/ui/Form";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
+import { PhotoGallery } from "@/components/ui/PhotoGallery";
 import { deleteInsoleOrder, setInsoleOrderStatus, togglePaid } from "../actions";
 
 export default async function InsoleOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [order, { statuses }] = await Promise.all([
-    prisma.insoleOrder.findUnique({ where: { id }, include: { patient: true, type: true, material: true, status: true } }),
+    prisma.insoleOrder.findUnique({ where: { id }, include: { patient: true, type: true, material: true, status: true, photos: { orderBy: { createdAt: "asc" } } } }),
     getInsoleOptions(),
   ]);
   if (!order) notFound();
@@ -59,7 +60,12 @@ export default async function InsoleOrderPage({ params }: { params: Promise<{ id
             {order.notes && <p className="whitespace-pre-line border-t border-slate-100 px-5 py-4 text-slate-700">{order.notes}</p>}
           </Card>
 
-          <Card>
+<Card>
+            <CardHeader title="Fotos" icon={Camera} subtitle="Molde, pisada, plantilla terminada…" />
+            <PhotoGallery photos={order.photos.map((p) => ({ id: p.id, url: `/api/uploads/${p.storagePath}` }))} uploadUrl={`/api/fotos?plantilla=${order.id}`} />
+          </Card>
+
+<Card>
             <CardHeader title="Cambiar estado" icon={RefreshCw} />
             <div className="flex flex-wrap gap-2 p-5">
               {statuses

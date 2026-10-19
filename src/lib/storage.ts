@@ -99,3 +99,29 @@ export async function saveLogo(file: File) {
 export async function readUpload(storagePath: string) {
   return fs.readFile(resolveUploadPath(storagePath));
 }
+
+// ── Fotos de reparaciones y plantillas ──────────────────────────────────────
+
+export type PhotoOwner = "reparaciones" | "plantillas";
+const PHOTO_EXT: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+export const MAX_PHOTO_BYTES = 15 * 1024 * 1024;
+
+/** Guarda una foto en uploads/fotos/<reparaciones|plantillas>/<id>/. */
+export async function savePhoto(owner: PhotoOwner, recordId: string, file: File) {
+  const ext = PHOTO_EXT[file.type];
+  if (!ext) throw new Error("Formato de imagen no compatible. Use JPG, PNG o WEBP.");
+  if (file.size > MAX_PHOTO_BYTES) throw new Error("La foto supera el máximo de 15 MB.");
+  if (!/^[a-z0-9]+$/i.test(recordId)) throw new Error("Registro no válido");
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const storagePath = path.posix.join("fotos", owner, recordId, `${new Date().toISOString().replace(/[:.]/g, "-")}_${crypto.randomBytes(3).toString("hex")}.${ext}`);
+  const full = resolveUploadPath(storagePath);
+  await fs.mkdir(path.dirname(full), { recursive: true });
+  await fs.writeFile(full, buffer, { flag: "wx" });
+  return { storagePath, mimeType: file.type, sizeBytes: buffer.length };
+}
+
+/** Borra la carpeta de fotos de un registro (al borrar el registro o suprimir al cliente). */
+export async function deletePhotoFolder(owner: PhotoOwner, recordId: string) {
+  if (!/^[a-z0-9]+$/i.test(recordId)) return;
+  await fs.rm(resolveUploadPath(path.posix.join("fotos", owner, recordId)), { recursive: true, force: true });
+}
