@@ -21,6 +21,7 @@ import {
   interventionType,
   prescriptionStatus,
   serviceType,
+  side,
   workOrderStatus,
 } from "./labels";
 
@@ -33,6 +34,7 @@ export async function collectPatientData(patientId: string) {
       stockings: { orderBy: { measuredAt: "asc" } },
       documents: { orderBy: { createdAt: "asc" } },
       workOrders: { include: { parts: true, quotes: true, statusHistory: true }, orderBy: { receivedAt: "asc" } },
+      insoleOrders: { include: { type: true, material: true, status: true }, orderBy: { createdAt: "asc" } },
       products: { include: { interventions: { orderBy: { date: "asc" } } } },
     },
   });
@@ -76,6 +78,16 @@ async function reportPdf(p: PatientData): Promise<Uint8Array> {
         ["Correcciones", i.corrections.map((c) => `${correctionType[c.type]}${c.valueMm ? ` ${c.valueMm} mm` : ""}`).join(", ")],
         ["Talla / longitudes", [i.shoeSize && `T${i.shoeSize}`, i.footLengthLeftMm && `izq. ${i.footLengthLeftMm} mm`, i.footLengthRightMm && `dcha. ${i.footLengthRightMm} mm`].filter(Boolean).join(" · ")],
         ["Notas", [i.diagnosisNotes, i.technicalNotes].filter(Boolean).join(" ")],
+      ]),
+    },
+    {
+      heading: "Plantillas (fabricación y entrega)",
+      rows: p.insoleOrders.flatMap((o) => [
+        `${o.code} · ${o.type.label}${o.material ? ` · ${o.material.label}` : ""} · ${o.status.label}`,
+        ["Pie / número", `${side[o.side]}${o.shoeSize != null ? ` · nº ${o.shoeSize}` : ""}`],
+        ["Toma de medidas / entrega prevista", `${formatDate(o.measuredAt)} / ${formatDate(o.dueAt)}`],
+        ["Precio", o.priceCents != null ? `${formatEUR(o.priceCents)} (${o.paid ? "pagado" : "pendiente de pago"})` : ""],
+        ["Observaciones", o.notes ?? ""],
       ]),
     },
     {
@@ -167,10 +179,16 @@ export async function writePatientExport(patientId: string, output: Writable): P
 export async function erasePatient(patientId: string) {
   const patient = await prisma.patient.findUnique({
     where: { id: patientId },
-    select: { id: true, documents: { select: { id: true } }, _count: { select: { insoles: true, stockings: true, documents: true, workOrders: true, products: true } } },
+    select: {
+      id: true,
+      documents: { select: { id: true } },
+      insoleOrders: { select: { id: true } },
+      _count: { select: { insoles: true, stockings: true, documents: true, workOrders: true, products: true, insoleOrders: true } },
+    },
   });
   if (!patient) return null;
   const docIds = patient.documents.map((d) => d.id);
+  const insoleOrderIds = patient.insoleOrders.map((o) => o.id);
 
   await prisma.$transaction([
     prisma.workOrder.updateMany({
@@ -179,10 +197,16 @@ export async function erasePatient(patientId: string) {
     }),
     // El registro de actividad no debe conservar nombres ni títulos de documentos del paciente
     prisma.auditLog.updateMany({
-      where: { OR: [{ entity: "Patient", entityId: patientId }, { entity: "ClinicalDocument", entityId: { in: docIds } }] },
+      where: {
+        OR: [
+          { entity: "Patient", entityId: patientId },
+          { entity: "ClinicalDocument", entityId: { in: docIds } },
+          { entity: "InsoleOrder", entityId: { in: insoleOrderIds } },
+        ],
+      },
       data: { summary: null },
     }),
-    prisma.patient.delete({ where: { id: patientId } }), // en cascada: plantillas, medias y documentos
+    prisma.patient.delete({ where: { id: patientId } }), // en cascada: prescripciones, plantillas, medias y documentos
   ]);
 
   // Archivos del paciente (carpeta uploads/<id>/)

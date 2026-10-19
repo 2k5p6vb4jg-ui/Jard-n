@@ -23,7 +23,7 @@ export function ErasePatientForm({ action, name }: { action: (s: ActionState, fd
       <p className="flex gap-2 font-semibold"><AlertTriangle className="size-5 shrink-0" />Se borrará definitivamente a {name}</p>
       <ul className="list-disc space-y-1 pl-5">
         <li>Ficha, plantillas, medias, estudios de pisada, fotos y demás documentos (también los archivos).</li>
-        <li>Las órdenes de taller y presupuestos se conservan <strong>anonimizados</strong>, y los productos con nº de serie quedan sin titular.</li>
+        <li>Las reparaciones y presupuestos se conservan <strong>anonimizados</strong>, y los productos con nº de serie quedan sin titular.</li>
         <li>Las copias de seguridad existentes aún contienen sus datos hasta que se renueven.</li>
       </ul>
       <p>Antes de borrar, compruebe con su asesoría si existe obligación legal de conservar parte de esta información.</p>

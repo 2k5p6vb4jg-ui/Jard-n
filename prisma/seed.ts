@@ -40,6 +40,7 @@ async function reset() {
   await prisma.timeEntry.deleteMany();
   await prisma.workOrderPart.deleteMany();
   await prisma.workOrder.deleteMany();
+  await prisma.insoleOrder.deleteMany();
   await prisma.trackedProduct.deleteMany();
   await prisma.technician.deleteMany();
   await prisma.clinicalDocument.deleteMany();
@@ -441,6 +442,43 @@ async function main() {
     }
   }
 
+  // ── Plantillas: fabricación, entrega y cobro ────────────────────────────
+  // Las opciones (tipo, material, estado) las crea la migración y se editan en Ajustes
+  const opts = await prisma.insoleOrderOption.findMany({ orderBy: { sortOrder: "asc" } });
+  const opt = (kind: "TYPE" | "MATERIAL" | "STATUS", n: number) => opts.filter((o) => o.kind === kind)[n] ?? opts.find((o) => o.kind === kind)!;
+  if (opts.some((o) => o.kind === "TYPE") && opts.some((o) => o.kind === "STATUS")) {
+    const insoleOrders: { patient: { id: string }; type: number; material: number | null; status: number; side?: "LEFT" | "RIGHT" | "BOTH"; shoeSize: number; measured: number; due: number; price: number; paid: boolean; notes?: string }[] = [
+      { patient: javier, type: 1, material: 0, status: 0, shoeSize: 43, measured: 1, due: 9, price: 16500, paid: false, notes: "Señal de 50 € pendiente." },
+      { patient: carmen, type: 3, material: 3, status: 1, shoeSize: 38, measured: 6, due: 4, price: 18000, paid: true, notes: "Pie diabético: sin costuras en la zona metatarsal." },
+      { patient: elena, type: 4, material: 0, status: 1, shoeSize: 34.5, measured: 12, due: -2, price: 12000, paid: false },
+      { patient: lucia, type: 0, material: 2, status: 2, shoeSize: 39, measured: 15, due: -1, price: 14500, paid: true },
+      { patient: antonio, type: 2, material: 1, status: 2, side: "LEFT", shoeSize: 42, measured: 20, due: -6, price: 9500, paid: false, notes: "Solo pie izquierdo (dismetría)." },
+      { patient: manuel, type: 0, material: 0, status: 3, side: "RIGHT", shoeSize: 41, measured: 60, due: -45, price: 9000, paid: true },
+      { patient: carmen, type: 3, material: 3, status: 3, shoeSize: 38, measured: 380, due: -365, price: 17500, paid: true },
+    ];
+    let pl = 0;
+    for (const o of insoleOrders) {
+      const measuredAt = daysAgo(o.measured);
+      await prisma.insoleOrder.create({
+        data: {
+          code: `PL-${now.getFullYear()}-${String(++pl).padStart(4, "0")}`,
+          patientId: o.patient.id,
+          typeId: opt("TYPE", o.type).id,
+          materialId: o.material === null ? null : opt("MATERIAL", o.material).id,
+          statusId: opt("STATUS", o.status).id,
+          side: o.side ?? "BOTH",
+          shoeSize: o.shoeSize,
+          measuredAt,
+          dueAt: daysAhead(o.due),
+          priceCents: o.price,
+          paid: o.paid,
+          notes: o.notes,
+          createdAt: measuredAt,
+        },
+      });
+    }
+  }
+
   // ── Histórico de 12 meses (para que las estadísticas tengan datos) ──────
   // Pseudoaleatorio con semilla fija: el resultado es siempre el mismo
   let seedN = 42;
@@ -493,7 +531,8 @@ async function main() {
 
   const counts = {
     pacientes: await prisma.patient.count(),
-    plantillas: await prisma.insolePrescription.count(),
+    plantillas: await prisma.insoleOrder.count(),
+    prescripcionesPlantillas: await prisma.insolePrescription.count(),
     medias: await prisma.compressionStocking.count(),
     ordenesTaller: await prisma.workOrder.count(),
     productos: await prisma.trackedProduct.count(),

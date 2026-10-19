@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
   CalendarClock,
+  ChevronDown,
   FileDown,
   FileText,
   Footprints,
@@ -16,6 +17,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { statusTones } from "@/lib/insoleOrders";
 import { formatDate } from "@/lib/dates";
 import { formatEUR } from "@/lib/money";
 import {
@@ -85,9 +87,11 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
       stockings: { orderBy: { measuredAt: "desc" } },
       documents: { orderBy: { createdAt: "desc" } },
       workOrders: { orderBy: { receivedAt: "desc" } },
+      insoleOrders: { include: { type: true, material: true, status: true }, orderBy: { createdAt: "desc" } },
     },
   });
   if (!patient) notFound();
+  const tones = statusTones(await prisma.insoleOrderOption.findMany({ where: { kind: "STATUS" }, orderBy: [{ sortOrder: "asc" }, { label: "asc" }] }));
 
   const prescriptionLinks = [
     ...patient.insoles.map((i) => ({ value: `insole:${i.id}`, label: `Plantillas ${insoleMaterial[i.material]}${i.shoreDensity ? ` ${i.shoreDensity}º` : ""} · ${formatDate(i.measuredAt)}` })),
@@ -147,41 +151,41 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
         </div>
 
         <div className="space-y-6 lg:col-span-2">
-          {/* Plantillas */}
+          {/* Reparaciones */}
           <Card>
-            <CardHeader title="Plantillas a medida" icon={Footprints} subtitle="Renovación cada 12 meses" action={<AddLink href={`/pacientes/${patient.id}/plantillas/nueva`}>Nuevas</AddLink>} />
-            {patient.insoles.length === 0 ? (
-              <EmptyState icon={Footprints} title="Sin plantillas registradas" />
-            ) : (
-              <ul className="divide-y divide-slate-100">
-                {patient.insoles.map((i) => (
-                  <li key={i.id} className="space-y-3 px-5 py-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-slate-800">
-                        {insoleMaterial[i.material]}
-                        {i.shoreDensity && ` ${i.shoreDensity}º Shore`} · {insoleFinish[i.finish]}
-                      </p>
-                      <Badge tone={prescriptionStatus[i.status].tone}>{prescriptionStatus[i.status].label}</Badge>
-                      <EditLink href={`/pacientes/${patient.id}/plantillas/${i.id}`} />
-                      {i.nextReviewAt && <Badge tone={i.nextReviewAt < new Date() ? "rose" : "slate"}>Revisión {formatDate(i.nextReviewAt)}</Badge>}
-                      <RenewalBadge kind="INSOLE" id={i.id} status={i.renewalStatus} delivered={i.status === "DELIVERED"} />
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {i.pathologies.map((p) => <Badge key={p.id} tone="indigo">{footPathology[p.pathology]}</Badge>)}
-                      {i.corrections.map((c) => <Badge key={c.id} tone="sky">{correctionType[c.type]}{c.valueMm ? ` ${c.valueMm} mm` : ""}</Badge>)}
-                    </div>
-                    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      {measure("Talla", i.shoeSize, "EU")}
-                      {measure("Long. izq.", i.footLengthLeftMm, "mm")}
-                      {measure("Long. dcha.", i.footLengthRightMm, "mm")}
-                      {measure("Alza", i.heelLiftMm, "mm")}
-                    </dl>
-                    {i.technicalNotes && <p className="text-sm text-slate-600">{i.technicalNotes}</p>}
-                    <p className="text-sm text-slate-500">Entregadas {formatDate(i.deliveredAt)} · {formatEUR(i.priceCents)}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <CardHeader title="Reparaciones" icon={Wrench} action={<AddLink href={`/taller/nueva?paciente=${patient.id}`}>Nueva</AddLink>} />
+            {patient.workOrders.length === 0 && <EmptyState icon={Wrench} title="Sin reparaciones" />}
+            <ul className="divide-y divide-slate-100">
+              {patient.workOrders.map((o) => (
+                <li key={o.id}>
+                  <Link href={`/taller/${o.id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-slate-50">
+                    <span><span className="font-mono text-sm text-slate-500">{o.code}</span> · {equipmentCategory[o.equipmentCategory]}</span>
+                    <Badge tone={workOrderStatus[o.status].tone}>{workOrderStatus[o.status].label}</Badge>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </Card>
+
+          {/* Plantillas (pedidos) */}
+          <Card>
+            <CardHeader title="Plantillas" icon={Footprints} action={<AddLink href={`/plantillas/nueva?paciente=${patient.id}`}>Nueva</AddLink>} />
+            {patient.insoleOrders.length === 0 && <EmptyState icon={Footprints} title="Sin plantillas" />}
+            <ul className="divide-y divide-slate-100">
+              {patient.insoleOrders.map((o) => (
+                <li key={o.id}>
+                  <Link href={`/plantillas/${o.id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-slate-50">
+                    <span className="min-w-0">
+                      <span className="font-mono text-sm text-slate-500">{o.code}</span> · {o.type.label}
+                      <span className="block truncate text-sm text-slate-500">
+                        {formatDate(o.measuredAt)}{o.material && ` · ${o.material.label}`}{o.priceCents != null && ` · ${formatEUR(o.priceCents)}${o.paid ? "" : " (pendiente de pago)"}`}
+                      </span>
+                    </span>
+                    <Badge tone={tones[o.statusId]}>{o.status.label}</Badge>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </Card>
 
           {/* Medias */}
@@ -235,21 +239,52 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
             />
           </Card>
 
-          {/* Taller */}
-          <Card>
-            <CardHeader title="Órdenes de taller" icon={Wrench} action={<AddLink href={`/taller/nueva?paciente=${patient.id}`}>Nueva</AddLink>} />
-            {patient.workOrders.length === 0 && <EmptyState icon={Wrench} title="Sin órdenes de taller" />}
-            <ul className="divide-y divide-slate-100">
-              {patient.workOrders.map((o) => (
-                <li key={o.id}>
-                  <Link href={`/taller/${o.id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-slate-50">
-                    <span><span className="font-mono text-sm text-slate-500">{o.code}</span> · {equipmentCategory[o.equipmentCategory]}</span>
-                    <Badge tone={workOrderStatus[o.status].tone}>{workOrderStatus[o.status].label}</Badge>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </Card>
+          {/* Prescripción clínica de plantillas (patologías, correcciones, medidas y avisos de renovación) */}
+          <details className="group rounded-xl border border-slate-200 bg-white shadow-sm">
+            <summary className="flex min-h-16 cursor-pointer list-none items-center gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
+              <span className="grid size-9 place-items-center rounded-lg bg-teal-50 text-teal-600"><Stethoscope className="size-5" /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold text-slate-800">Prescripción clínica de plantillas</span>
+                <span className="block text-sm text-slate-500">{patient.insoles.length} {patient.insoles.length === 1 ? "registro" : "registros"} · Patologías, correcciones y aviso de renovación a los 12 meses</span>
+              </span>
+              <ChevronDown className="size-5 text-slate-400 transition group-open:rotate-180" />
+            </summary>
+            <div className="flex justify-end border-t border-slate-100 px-5 py-3">
+              <AddLink href={`/pacientes/${patient.id}/plantillas/nueva`}>Nueva prescripción</AddLink>
+            </div>
+            {patient.insoles.length === 0 ? (
+              <EmptyState icon={Stethoscope} title="Sin prescripciones clínicas" />
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {patient.insoles.map((i) => (
+                  <li key={i.id} className="space-y-3 px-5 py-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-slate-800">
+                        {insoleMaterial[i.material]}
+                        {i.shoreDensity && ` ${i.shoreDensity}º Shore`} · {insoleFinish[i.finish]}
+                      </p>
+                      <Badge tone={prescriptionStatus[i.status].tone}>{prescriptionStatus[i.status].label}</Badge>
+                      <EditLink href={`/pacientes/${patient.id}/plantillas/${i.id}`} />
+                      {i.nextReviewAt && <Badge tone={i.nextReviewAt < new Date() ? "rose" : "slate"}>Revisión {formatDate(i.nextReviewAt)}</Badge>}
+                      <RenewalBadge kind="INSOLE" id={i.id} status={i.renewalStatus} delivered={i.status === "DELIVERED"} />
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {i.pathologies.map((p) => <Badge key={p.id} tone="indigo">{footPathology[p.pathology]}</Badge>)}
+                      {i.corrections.map((c) => <Badge key={c.id} tone="sky">{correctionType[c.type]}{c.valueMm ? ` ${c.valueMm} mm` : ""}</Badge>)}
+                    </div>
+                    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {measure("Talla", i.shoeSize, "EU")}
+                      {measure("Long. izq.", i.footLengthLeftMm, "mm")}
+                      {measure("Long. dcha.", i.footLengthRightMm, "mm")}
+                      {measure("Alza", i.heelLiftMm, "mm")}
+                    </dl>
+                    {i.technicalNotes && <p className="text-sm text-slate-600">{i.technicalNotes}</p>}
+                    <p className="text-sm text-slate-500">Entregadas {formatDate(i.deliveredAt)} · {formatEUR(i.priceCents)}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </details>
         </div>
       </div>
     </>

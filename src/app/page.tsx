@@ -79,7 +79,7 @@ export default async function DashboardPage() {
         {/* Taller activo */}
         <Card className="xl:col-span-2">
           <CardHeader
-            title="Taller en curso"
+            title="Reparaciones en curso"
             icon={Wrench}
             action={
               <Link href="/taller" className="text-sm font-medium text-teal-600 hover:text-teal-700">

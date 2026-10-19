@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BarChart3, Footprints, Lock, Search, ShieldCheck } from "lucide-react";
 import { lock } from "@/app/acceso/actions";
-import { NAV, NAV_EXTRA } from "./nav";
+import { NAV } from "./nav";
 
 function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -35,7 +35,7 @@ export function Sidebar({ businessName, logoUrl, hasPin }: { businessName: strin
         <input name="q" placeholder="Buscar…" aria-label="Buscar" className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-500/15" />
       </form>
       <nav className="flex flex-1 flex-col gap-1 px-3">
-        {[...NAV, ...NAV_EXTRA].map(({ href, label, icon: Icon }) => {
+        {NAV.map(({ href, label, icon: Icon }) => {
           const active = isActive(pathname, href);
           return (
             <Link
@@ -73,7 +73,7 @@ export function BottomNav() {
   if (pathname === "/acceso") return null;
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
-      {NAV.map(({ href, label, icon: Icon }) => {
+      {NAV.filter((n) => n.mobile).map(({ href, label, icon: Icon }) => {
         const active = isActive(pathname, href);
         return (
           <Link

@@ -71,7 +71,7 @@ export async function erasePatientAction(id: string, _prev: ActionState, fd: For
     "DELETE",
     "Patient",
     id,
-    `Supresión RGPD: ${counts.insoles} plantillas, ${counts.stockings} medias, ${counts.documents} documentos; ${counts.workOrders} órdenes anonimizadas; ${counts.products} productos desvinculados`,
+    `Supresión RGPD: ${counts.insoleOrders} plantillas, ${counts.insoles} prescripciones de plantillas, ${counts.stockings} medias, ${counts.documents} documentos; ${counts.workOrders} órdenes anonimizadas; ${counts.products} productos desvinculados`,
   );
   revalidatePath("/", "layout");
   redirect("/pacientes?eliminado=1");

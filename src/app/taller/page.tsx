@@ -10,7 +10,7 @@ import { LinkButton } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 
-export const metadata = { title: "Taller" };
+export const metadata = { title: "Reparaciones" };
 
 export default async function WorkshopPage({ searchParams }: { searchParams: Promise<{ estado?: string }> }) {
   const { estado } = await searchParams;
@@ -37,7 +37,7 @@ export default async function WorkshopPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PageHeader
-        title="Taller y reparaciones"
+        title="Reparaciones"
         description="Sillas de ruedas, scooters, grúas, andadores, órtesis y prótesis"
         actions={<LinkButton href="/taller/nueva" icon={ClipboardPlus}>Nueva orden</LinkButton>}
       />

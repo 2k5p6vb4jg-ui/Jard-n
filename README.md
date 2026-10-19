@@ -1,7 +1,7 @@
 # Jardón Ortopedia · Gestión clínica y de taller
 
-Web App **100 % local** para una ortopedia: historial clínico (plantillas a medida y medias de compresión),
-taller de reparaciones con desglose de costes, trazabilidad por número de serie y copias de seguridad.
+Web App **100 % local** para una ortopedia: fichas de clientes con historial clínico, **reparaciones** con
+desglose de costes, **plantillas** (fabricación, entrega y cobro), trazabilidad por número de serie y copias de seguridad.
 Funciona en el PC de la tienda y se usa desde tablets y móviles conectados a la misma Wi-Fi.
 Ningún dato sale del equipo (sin servicios en la nube, sin telemetría).
 
@@ -73,13 +73,16 @@ src/
   app/
     page.tsx             Panel: órdenes por estado + avisos de renovación
     pacientes/           Listado, ficha clínica, alta
-    taller/              Órdenes de trabajo por estado, detalle con costes
+    taller/              Reparaciones: órdenes de trabajo por estado, detalle con costes
+    plantillas/          Plantillas: listado con buscador, alta/edición, estado y cobro
+    configuracion/plantillas/  Opciones editables de plantillas (tipos, materiales, estados)
     trazabilidad/        Productos por nº de serie e histórico de intervenciones
     configuracion/       Datos del negocio y copia de seguridad
     api/backup/          Descarga instantánea consistente de la BD (VACUUM INTO)
     api/uploads/[...]    Sirve adjuntos registrados (protegido contra path traversal)
   components/ui/         Card, Badge, Button (≥48 px táctil), PageHeader, EmptyState
-  components/layout/     Barra lateral (escritorio) y barra inferior (móvil)
+  components/layout/     Barra lateral (escritorio) y barra inferior (móvil: Panel, Clientes, Reparaciones, Plantillas,
+                         Ajustes; Trazabilidad y Estadísticas se abren desde Ajustes)
   lib/
     prisma.ts            Cliente único de Prisma
     labels.ts            Etiquetas en castellano y colores de badge por enumerado
@@ -93,7 +96,9 @@ src/
 - **CRM clínico:** `Patient` → `InsolePrescription` (+ `InsolePathology`, `InsoleCorrection`),
   `CompressionStocking` (perímetros cB…cT y longitudes lA-x, receta / Seguridad Social), `ClinicalDocument`.
   Cada prescripción guarda `deliveredAt` y `nextReviewAt` (indexado) + `renewalStatus` para gestionar el aviso.
-- **Taller:** `WorkOrder` (flujo Entrada → Diagnóstico → Presupuestado → En reparación → Listo → Entregado),
+- **Plantillas:** `InsoleOrder` (código `PL-AAAA-NNNN`, cliente, pie, número, fechas, precio, pagado) con tipo,
+  material y estado en `InsoleOrderOption` (tabla editable desde Ajustes; las opciones en uso se desactivan, no se borran).
+- **Reparaciones:** `WorkOrder` (flujo Entrada → Diagnóstico → Presupuestado → En reparación → Listo → Entregado),
   `WorkOrderPart`, `TimeEntry`, `WorkOrderStatusChange`, `Quote` (instantánea de importes para el PDF), `Technician`.
 - **Trazabilidad:** `TrackedProduct` (nº de serie único, lote, UDI, garantía) y `ProductIntervention`.
 - **Sistema:** `Settings` (datos fiscales, tarifa/hora, IVA, plazos de renovación), `AuditLog`, `BackupRecord`.
@@ -107,7 +112,7 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
   Registro de actividad): accesos, altas, cambios, exportaciones, copias y borrados, con la IP del dispositivo.
 - **Derecho de acceso y portabilidad:** en la ficha del paciente, «Exportar todos sus datos» genera un .zip con
   un informe PDF legible, los datos en JSON y todos sus documentos.
-- **Derecho de supresión:** «Suprimir todos los datos» (escribiendo ELIMINAR) borra la ficha, prescripciones,
+- **Derecho de supresión:** «Suprimir todos los datos» (escribiendo ELIMINAR) borra la ficha, plantillas, prescripciones,
   documentos y sus archivos; las órdenes de taller y presupuestos se conservan **anonimizadas** y los productos
   con nº de serie quedan sin titular. Antes de borrar, confirme con su asesoría si existe obligación legal de
   conservar parte de la información. Las copias de seguridad antiguas contienen los datos hasta que rotan.
@@ -117,9 +122,17 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
 ## Qué se puede hacer ya
 
 - **Pacientes:** alta y edición (DNI/NIE con letra verificada, consentimiento RGPD con fecha).
-- **Plantillas y medias:** alta y edición completas. Al marcarlas como *Entregada* se programa la revisión
+- **Prescripción clínica de plantillas y medias:** alta y edición completas. Al marcarlas como *Entregada* se programa la revisión
   (12 / 6 meses) y se cierran los avisos de prescripciones anteriores del mismo tipo.
-- **Taller:** entrada de equipos (con código OT automático y datos rellenados desde trazabilidad),
+- **Plantillas** (menú propio): listado «En curso» / por estado / todas, buscador sin tildes (cliente, teléfono,
+  código, tipo, material), formulario con cliente, tipo, pie, número de pie, material, toma de medidas, entrega
+  prevista, estado, precio, pagado y observaciones; cambio de estado y de pago con un toque, aviso de «Retrasada».
+  Tipos, materiales y estados se editan en **Ajustes → Opciones de plantillas** (añadir, renombrar, ordenar,
+  desactivar; un estado «final» saca el pedido de «En curso»).
+- **Ficha del cliente:** apartados **Reparaciones** y **Plantillas** con su historial y botón «Nueva», que abre el
+  formulario con el cliente ya elegido. La prescripción clínica de plantillas (patologías, correcciones, avisos de
+  renovación) sigue disponible, plegada al final de la ficha.
+- **Reparaciones:** entrada de equipos (con código OT automático y datos rellenados desde trazabilidad),
   avance/retroceso de estado, anulación, piezas con coste y PVP, cronómetro del técnico y tiempo manual,
   desglose de costes en vivo. Al entregar un equipo con nº de serie, la intervención queda en su histórico.
 - **Trazabilidad:** alta y edición de productos; la garantía se calcula desde la fecha de entrega.
@@ -149,7 +162,7 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
 
 - **Resguardo de entrada** imprimible (botón «Resguardo» en cada orden): A4 con copia para el cliente y para
   el taller, con datos del equipo, accesorios, avería, condiciones y firmas.
-- **Búsqueda global** (barra lateral o lupa en el móvil): pacientes, órdenes, números de serie y presupuestos,
+- **Búsqueda global** (barra lateral o lupa en el móvil): clientes, reparaciones, plantillas, números de serie y presupuestos,
   sin importar tildes ni mayúsculas («alvarez» encuentra «Álvarez»).
 - **Estadísticas**: facturación mensual del taller y de plantillas/medias, unidades entregadas, tiempo medio en
   taller, presupuestos aceptados y equipos por categoría (cifras orientativas, no sustituyen a la contabilidad).

@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { ChevronRight, FileText, ScanBarcode, Search, Users, Wrench } from "lucide-react";
+import { ChevronRight, FileText, Footprints, ScanBarcode, Search, Users, Wrench } from "lucide-react";
 import { globalSearch } from "@/lib/search";
 import { formatDate } from "@/lib/dates";
 import { formatEUR } from "@/lib/money";
 import { equipmentCategory, quoteStatus, workOrderStatus } from "@/lib/labels";
 import { effectiveQuoteStatus } from "@/lib/quotes";
+import { getInsoleOptions, statusTones } from "@/lib/insoleOrders";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -17,14 +18,15 @@ const row = "flex min-h-14 items-center gap-3 px-5 py-3 hover:bg-slate-50";
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q = "" } = await searchParams;
   const r = await globalSearch(q);
-  const total = r ? r.patients.length + r.orders.length + r.products.length + r.quotes.length : 0;
+  const total = r ? r.patients.length + r.orders.length + r.insoleOrders.length + r.products.length + r.quotes.length : 0;
+  const tones = r?.insoleOrders.length ? statusTones((await getInsoleOptions()).statuses) : {};
 
   return (
     <>
-      <PageHeader title="Buscar" description="Pacientes, órdenes de taller, números de serie y presupuestos" />
+      <PageHeader title="Buscar" description="Clientes, reparaciones, plantillas, números de serie y presupuestos" />
       <form className="relative mb-6">
         <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
-        <input name="q" defaultValue={q} autoFocus placeholder="Nombre, DNI, teléfono, OT-2026-…, nº de serie…" className="field pl-12" />
+        <input name="q" defaultValue={q} autoFocus placeholder="Nombre, DNI, teléfono, OT-2026-…, PL-2026-…, nº de serie…" className="field pl-12" />
       </form>
 
       {!r ? (
@@ -35,7 +37,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {r.patients.length > 0 && (
             <Card>
-              <CardHeader title="Pacientes" icon={Users} subtitle={`${r.patients.length}`} />
+              <CardHeader title="Clientes" icon={Users} subtitle={`${r.patients.length}`} />
               <ul className="divide-y divide-slate-100">
                 {r.patients.map((p) => (
                   <li key={p.id}>
@@ -53,7 +55,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           )}
           {r.orders.length > 0 && (
             <Card>
-              <CardHeader title="Órdenes de taller" icon={Wrench} subtitle={`${r.orders.length}`} />
+              <CardHeader title="Reparaciones" icon={Wrench} subtitle={`${r.orders.length}`} />
               <ul className="divide-y divide-slate-100">
                 {r.orders.map((o) => (
                   <li key={o.id}>
@@ -65,6 +67,24 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                         </p>
                       </div>
                       <Badge tone={workOrderStatus[o.status].tone}>{workOrderStatus[o.status].label}</Badge>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+          {r.insoleOrders.length > 0 && (
+            <Card>
+              <CardHeader title="Plantillas" icon={Footprints} subtitle={`${r.insoleOrders.length}`} />
+              <ul className="divide-y divide-slate-100">
+                {r.insoleOrders.map((o) => (
+                  <li key={o.id}>
+                    <Link href={`/plantillas/${o.id}`} className={row}>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-slate-800"><span className="font-mono text-sm text-slate-500">{o.code}</span> · {o.type.label}</p>
+                        <p className="truncate text-sm text-slate-500">{o.patient.firstName} {o.patient.lastName} · {formatDate(o.measuredAt)}{o.material && ` · ${o.material.label}`}</p>
+                      </div>
+                      <Badge tone={tones[o.statusId]}>{o.status.label}</Badge>
                     </Link>
                   </li>
                 ))}

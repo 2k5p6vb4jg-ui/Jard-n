@@ -21,7 +21,8 @@ const ACTIONS: Record<AuditAction, { label: string; tone: Tone }> = {
 
 const ENTITIES: Record<string, string> = {
   Patient: "Paciente",
-  InsolePrescription: "Plantillas",
+  InsolePrescription: "Prescripción de plantillas",
+  InsoleOrder: "Plantillas (pedido)",
   CompressionStocking: "Medias",
   ClinicalDocument: "Documento",
   Settings: "Ajustes",

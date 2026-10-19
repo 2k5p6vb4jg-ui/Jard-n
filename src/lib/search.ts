@@ -6,7 +6,7 @@ export const normalize = (s: string) =>
   s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 
 /** Todas las palabras buscadas deben aparecer en alguno de los campos. Ignora espacios en teléfonos/DNI. */
-function matcher(term: string) {
+export function matcher(term: string) {
   const tokens = normalize(term).split(" ").filter(Boolean);
   return (...fields: (string | null | undefined)[]) => {
     const hay = normalize(fields.filter(Boolean).join(" "));
@@ -22,7 +22,7 @@ function matcher(term: string) {
 export async function searchPatients(term: string, limit = 200) {
   const all = await prisma.patient.findMany({
     where: { archivedAt: null },
-    include: { _count: { select: { insoles: true, stockings: true, documents: true, workOrders: true } } },
+    include: { _count: { select: { insoles: true, stockings: true, documents: true, workOrders: true, insoleOrders: true } } },
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
   });
   if (!term.trim()) return all.slice(0, limit);
@@ -33,7 +33,7 @@ export async function searchPatients(term: string, limit = 200) {
 export async function globalSearch(term: string) {
   if (normalize(term).length < 2) return null;
   const m = matcher(term);
-  const [patients, orders, products, quotes] = await Promise.all([
+  const [patients, orders, products, quotes, insoleOrders] = await Promise.all([
     searchPatients(term, 20),
     prisma.workOrder.findMany({
       select: {
@@ -47,6 +47,14 @@ export async function globalSearch(term: string) {
       select: { id: true, serialNumber: true, lotNumber: true, brand: true, model: true, category: true, patient: { select: { firstName: true, lastName: true } } },
     }),
     prisma.quote.findMany({ select: { id: true, number: true, totalCents: true, status: true, validUntil: true, workOrderId: true, workOrder: { select: { code: true } } } }),
+    prisma.insoleOrder.findMany({
+      select: {
+        id: true, code: true, statusId: true, measuredAt: true, notes: true,
+        type: { select: { label: true } }, material: { select: { label: true } }, status: { select: { label: true } },
+        patient: { select: { firstName: true, lastName: true, phone: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
   return {
     patients,
@@ -55,5 +63,8 @@ export async function globalSearch(term: string) {
       .slice(0, 20),
     products: products.filter((p) => m(p.serialNumber, p.lotNumber, p.brand, p.model, p.patient?.firstName, p.patient?.lastName)).slice(0, 20),
     quotes: quotes.filter((q) => m(q.number, q.workOrder.code)).slice(0, 20),
+    insoleOrders: insoleOrders
+      .filter((o) => m(o.code, o.patient.firstName, o.patient.lastName, o.patient.phone, o.type.label, o.material?.label))
+      .slice(0, 20),
   };
 }

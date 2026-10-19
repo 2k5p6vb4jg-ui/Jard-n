@@ -1,12 +1,12 @@
-import { BarChart3, LayoutDashboard, Users, Wrench, ScanBarcode, Settings, type LucideIcon } from "lucide-react";
+import { BarChart3, Footprints, LayoutDashboard, Users, Wrench, ScanBarcode, Settings, type LucideIcon } from "lucide-react";
 
-export const NAV: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: "/", label: "Panel", icon: LayoutDashboard },
-  { href: "/pacientes", label: "Pacientes", icon: Users },
-  { href: "/taller", label: "Taller", icon: Wrench },
+/** `mobile`: también en la barra inferior del móvil, que solo tiene sitio para 5 (el resto se abre desde Ajustes). */
+export const NAV: { href: string; label: string; icon: LucideIcon; mobile?: boolean }[] = [
+  { href: "/", label: "Panel", icon: LayoutDashboard, mobile: true },
+  { href: "/pacientes", label: "Clientes", icon: Users, mobile: true },
+  { href: "/taller", label: "Reparaciones", icon: Wrench, mobile: true },
+  { href: "/plantillas", label: "Plantillas", icon: Footprints, mobile: true },
   { href: "/trazabilidad", label: "Trazabilidad", icon: ScanBarcode },
-  { href: "/configuracion", label: "Ajustes", icon: Settings },
+  { href: "/estadisticas", label: "Estadísticas", icon: BarChart3 },
+  { href: "/configuracion", label: "Ajustes", icon: Settings, mobile: true },
 ];
-
-/** Solo en la barra lateral (la barra inferior del móvil tiene sitio para 5) */
-export const NAV_EXTRA: { href: string; label: string; icon: LucideIcon }[] = [{ href: "/estadisticas", label: "Estadísticas", icon: BarChart3 }];

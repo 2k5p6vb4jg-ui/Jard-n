@@ -7,7 +7,7 @@ import { LinkButton } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 
-export const metadata = { title: "Pacientes" };
+export const metadata = { title: "Clientes" };
 
 export default async function PatientsPage({ searchParams }: { searchParams: Promise<{ q?: string; eliminado?: string }> }) {
   const { q = "", eliminado } = await searchParams;
@@ -16,9 +16,9 @@ export default async function PatientsPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PageHeader
-        title="Pacientes"
+        title="Clientes"
         description={`${patients.length} fichas`}
-        actions={<LinkButton href="/pacientes/nuevo" icon={UserPlus}>Nuevo paciente</LinkButton>}
+        actions={<LinkButton href="/pacientes/nuevo" icon={UserPlus}>Nuevo cliente</LinkButton>}
       />
       {eliminado && (
         <p role="status" className="mb-4 flex items-center gap-2 rounded-xl bg-emerald-50 p-4 text-emerald-800">
@@ -51,9 +51,9 @@ export default async function PatientsPage({ searchParams }: { searchParams: Pro
                     </p>
                   </div>
                   <div className="hidden flex-wrap justify-end gap-1.5 sm:flex">
-                    {p._count.insoles > 0 && <Badge tone="indigo">Plantillas · {p._count.insoles}</Badge>}
+                    {p._count.insoleOrders > 0 && <Badge tone="indigo">Plantillas · {p._count.insoleOrders}</Badge>}
                     {p._count.stockings > 0 && <Badge tone="teal">Medias · {p._count.stockings}</Badge>}
-                    {p._count.workOrders > 0 && <Badge tone="amber">Taller · {p._count.workOrders}</Badge>}
+                    {p._count.workOrders > 0 && <Badge tone="amber">Reparaciones · {p._count.workOrders}</Badge>}
                   </div>
                   <ChevronRight className="size-5 text-slate-300" />
                 </Link>

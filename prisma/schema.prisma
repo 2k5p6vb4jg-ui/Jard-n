@@ -287,11 +287,12 @@ model Patient {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  insoles    InsolePrescription[]
-  stockings  CompressionStocking[]
-  documents  ClinicalDocument[]
-  workOrders WorkOrder[]
-  products   TrackedProduct[]
+  insoles      InsolePrescription[]
+  stockings    CompressionStocking[]
+  documents    ClinicalDocument[]
+  workOrders   WorkOrder[]
+  products     TrackedProduct[]
+  insoleOrders InsoleOrder[]
 
   @@index([lastName, firstName])
   @@index([phone])
@@ -636,6 +637,68 @@ model Quote {
   createdAt DateTime @default(now())
 
   @@index([workOrderId])
+}
+
+// ----------------------------------------------------------------------------
+//  MÓDULO 2b · TALLER DE PLANTILLAS (pedidos de fabricación, entrega y cobro)
+// ----------------------------------------------------------------------------
+
+enum InsoleOptionKind {
+  TYPE
+  MATERIAL
+  STATUS
+}
+
+/// Opciones editables desde Ajustes para la sección Plantillas (tipo, material y estado).
+/// Una opción en uso no se borra: se desactiva y deja de ofrecerse en los formularios.
+model InsoleOrderOption {
+  id        String           @id @default(cuid())
+  kind      InsoleOptionKind
+  label     String
+  sortOrder Int              @default(0)
+  active    Boolean          @default(true)
+  /// Solo estados: el pedido está terminado (entregado, anulado…) y sale de «En curso»
+  isFinal   Boolean          @default(false)
+
+  typeOrders     InsoleOrder[] @relation("InsoleOrderType")
+  materialOrders InsoleOrder[] @relation("InsoleOrderMaterial")
+  statusOrders   InsoleOrder[] @relation("InsoleOrderStatus")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([kind, label])
+  @@index([kind, sortOrder])
+}
+
+model InsoleOrder {
+  id   String @id @default(cuid())
+  /// Código legible: PL-2026-0001
+  code String @unique
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  typeId     String
+  type       InsoleOrderOption  @relation("InsoleOrderType", fields: [typeId], references: [id], onDelete: Restrict)
+  side       Side               @default(BOTH)
+  shoeSize   Float? // Número de pie (talla europea)
+  materialId String?
+  material   InsoleOrderOption? @relation("InsoleOrderMaterial", fields: [materialId], references: [id], onDelete: Restrict)
+  statusId   String
+  status     InsoleOrderOption  @relation("InsoleOrderStatus", fields: [statusId], references: [id], onDelete: Restrict)
+
+  measuredAt DateTime? // Toma de medidas
+  dueAt      DateTime? // Entrega prevista
+  priceCents Int?
+  paid       Boolean   @default(false)
+  notes      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([statusId])
 }
 
 // ----------------------------------------------------------------------------
