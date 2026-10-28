@@ -1,3 +1,4 @@
+import pkg from "../../../package.json";
 import { BarChart3, BellRing, Building, Truck, Palette, Building2, DatabaseBackup, ListChecks, ScanBarcode, FolderDown, HardDriveDownload, ImageIcon, Info, KeyRound, Lock, Plus, Receipt, Save, ScrollText, ShieldAlert, Trash2, Users } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { toEurosInput } from "@/lib/forms";
@@ -10,9 +11,10 @@ import { InlineForm } from "@/components/ui/InlineForm";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { LogoForm } from "@/components/settings/LogoForm";
 import { RestorePanel } from "@/components/settings/RestorePanel";
+import { VerifyBackup } from "@/components/settings/VerifyBackup";
 import { BACKUP_DIR, listBackups } from "@/lib/backup";
 import { lock } from "../acceso/actions";
-import { backupNow, removeLogo, removePin, saveBackupOptions, saveSettings, setPin, saveTechnician, uploadLogo } from "./actions";
+import { verifyLatestBackup, backupNow, removeLogo, removePin, saveBackupOptions, saveSettings, setPin, saveTechnician, uploadLogo } from "./actions";
 
 export const metadata = { title: "Ajustes" };
 
@@ -136,8 +138,23 @@ export default async function SettingsPage() {
                   </div>
                   <SubmitButton icon={<Save className="size-5" />} variant="secondary">Guardar</SubmitButton>
                 </div>
-                <p className="break-all text-xs text-slate-500">Carpeta: <code>{BACKUP_DIR}</code> (variable BACKUP_DIR para usar un disco externo o NAS)</p>
+                <div>
+                  <label className="field-label" htmlFor="backupMirrorDir">Segunda copia en un disco externo, pendrive o NAS</label>
+                  <input id="backupMirrorDir" name="backupMirrorDir" defaultValue={settings?.backupMirrorDir ?? ""} placeholder="E:\CopiasJardon" className="field" />
+                  <p className="mt-1 text-xs text-slate-500">Cada copia se duplica también ahí. Vacío: solo en este equipo.</p>
+                  {settings?.backupMirrorDir &&
+                    (settings.lastMirrorError ? (
+                      <p className="mt-1 text-xs font-medium text-rose-600">Último error: {settings.lastMirrorError}</p>
+                    ) : settings.lastMirrorAt ? (
+                      <p className="mt-1 text-xs font-medium text-emerald-700">Última segunda copia: {settings.lastMirrorAt.toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" })}</p>
+                    ) : null)}
+                </div>
+                <p className="break-all text-xs text-slate-500">Copias en el equipo: <code>{BACKUP_DIR}</code></p>
+                <p className="text-xs text-slate-500">
+                  Versión instalada <strong>{pkg.version}</strong>. Para actualizar: cierre la app y haga doble clic en <code>ACTUALIZAR.bat</code> (antes guarda una copia de sus datos).
+                </p>
               </InlineForm>
+              <VerifyBackup action={verifyLatestBackup} />
 
               </div>
               <RestorePanel
@@ -145,7 +162,7 @@ export default async function SettingsPage() {
                   name: b.name,
                   size: b.size,
                   createdAt: b.createdAt.toISOString(),
-                  label: { auto: "Automática", manual: "Manual", "antes-de-restaurar": "Antes de restaurar", otra: "Copia" }[b.kind],
+                  label: { auto: "Automática", manual: "Manual", "antes-de-restaurar": "Antes de restaurar", "antes-de-actualizar": "Antes de actualizar", otra: "Copia" }[b.kind],
                 }))}
               />
             </div>

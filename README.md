@@ -191,6 +191,10 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
 - **Copias de seguridad completas:** un único `.zip` con la base de datos (instantánea consistente) y todas
   las fotos y documentos. Descarga directa, copia manual en el equipo y **copia automática diaria**
   (se conservan las últimas N) en `backups/` o en la carpeta indicada en `BACKUP_DIR` (disco externo, NAS).
+- **Segunda copia fuera del ordenador:** en Ajustes se indica una carpeta en un disco externo, pendrive o NAS y cada
+  copia se duplica allí. Si falla (disco desconectado), Ajustes y el Panel lo avisan; el Panel también avisa si hace
+  más de 3 días que no se hace la copia automática. **«Comprobar la última copia»** la revisa sin restaurarla
+  (integridad de la base de datos y lo que contiene).
 - **Restauración** desde Ajustes (archivo .zip o copia guardada), escribiendo RESTAURAR para confirmar.
   Antes de tocar nada guarda el estado actual (`jardon-antes-de-restaurar-*.zip`); los datos se vuelcan en
   una sola transacción (o se restaura todo o nada) y una copia de una versión anterior se actualiza sola.
@@ -209,7 +213,16 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
 
 ## Actualizar una instalación existente
 
+**Windows:** doble clic en **`ACTUALIZAR.bat`**. Cierra la app, guarda una copia de seguridad
+(`backups/jardon-antes-de-actualizar-*.zip`), descarga la última versión (o usa el ZIP más reciente de la carpeta
+Descargas si no puede descargarla), sustituye el programa **sin tocar** la base de datos, las fotos ni las copias,
+instala, compila y vuelve a arrancar. Si la versión nueva no se puede instalar, vuelve sola a la anterior
+(guardada en `backups/programa-anterior-*`).
+
+A mano (macOS/Linux):
+
 ```bash
+npm run copia            # copia de seguridad antes de nada
 git pull                 # o sustituir la carpeta por la versión nueva, conservando prisma/dev.db, uploads/ y backups/
 npm install
 npm run build

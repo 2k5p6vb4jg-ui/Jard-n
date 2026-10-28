@@ -110,14 +110,74 @@ export async function createBackupFile(prefix: "auto" | "manual" | "antes-de-res
   await writeBackupZip(fs.createWriteStream(tmp));
   await fsp.rename(tmp, file);
   const { size } = await fsp.stat(file);
+  await mirrorBackup(file);
   return { file, size };
+}
+
+// ── Segunda copia (disco externo, pendrive o NAS) ───────────────────────────
+
+/**
+ * Duplica la copia en la carpeta externa de Ajustes. Si falla (disco desconectado…) no interrumpe
+ * nada: el error queda anotado y se muestra en Ajustes.
+ */
+export async function mirrorBackup(file: string) {
+  const s = await prisma.settings.findUnique({ where: { id: 1 }, select: { backupMirrorDir: true, autoBackupKeep: true } });
+  if (!s?.backupMirrorDir) return;
+  try {
+    const dir = s.backupMirrorDir;
+    await fsp.mkdir(dir, { recursive: true });
+    const target = path.join(dir, path.basename(file));
+    await fsp.copyFile(file, `${target}.parcial`);
+    await fsp.rename(`${target}.parcial`, target);
+    // Conserva en la carpeta externa el mismo número de copias automáticas que en el equipo
+    const autos = (await fsp.readdir(dir)).filter((n) => n.startsWith("jardon-auto-") && n.endsWith(".zip")).sort().reverse();
+    for (const old of autos.slice(Math.max(1, s.autoBackupKeep))) await fsp.rm(path.join(dir, old), { force: true });
+    await prisma.settings.update({ where: { id: 1 }, data: { lastMirrorAt: new Date(), lastMirrorError: null } });
+  } catch (e) {
+    await prisma.settings.update({ where: { id: 1 }, data: { lastMirrorError: `${new Date().toLocaleString("es-ES")}: ${(e as Error).message}` } });
+  }
+}
+
+/** Comprueba que una carpeta existe (o se puede crear) y que se puede escribir en ella. */
+export async function testWritableDir(dir: string) {
+  await fsp.mkdir(dir, { recursive: true });
+  const probe = path.join(dir, `.prueba-jardon-${Date.now()}`);
+  await fsp.writeFile(probe, "ok");
+  await fsp.rm(probe, { force: true });
+}
+
+/**
+ * Comprueba una copia sin restaurarla: la descomprime aparte, revisa la integridad de la base de
+ * datos y cuenta lo que contiene. Sirve para saber que, llegado el caso, se podrá recuperar.
+ */
+export async function verifyBackup(zipFile: string) {
+  const dir = path.join(WORK_DIR, `comprobar-${Date.now()}`);
+  try {
+    await extract(zipFile, dir);
+    const manifest = JSON.parse(await fsp.readFile(path.join(dir, "manifest.json"), "utf8")) as BackupManifest;
+    if (manifest.app !== APP_ID) throw new RestoreError("El archivo no es una copia de esta aplicación.");
+    const { DatabaseSync } = await import("node:sqlite");
+    const db = new DatabaseSync(path.join(dir, "database.db"), { readOnly: true });
+    try {
+      const check = (db.prepare("PRAGMA integrity_check").get() as { integrity_check: string }).integrity_check;
+      if (check !== "ok") throw new RestoreError(`La base de datos de la copia está dañada (${check}).`);
+      const n = (t: string) => (db.prepare(`SELECT COUNT(*) AS n FROM "${t}"`).get() as { n: number }).n;
+      let files = 0;
+      for await (const _ of walk(path.join(dir, "uploads"))) files++;
+      return { createdAt: manifest.createdAt, patients: n("Patient"), workOrders: n("WorkOrder"), files };
+    } finally {
+      db.close();
+    }
+  } finally {
+    await fsp.rm(dir, { recursive: true, force: true });
+  }
 }
 
 export interface StoredBackup {
   name: string;
   size: number;
   createdAt: Date;
-  kind: "auto" | "manual" | "antes-de-restaurar" | "otra";
+  kind: "auto" | "manual" | "antes-de-restaurar" | "antes-de-actualizar" | "otra";
 }
 
 export async function listBackups(): Promise<StoredBackup[]> {
@@ -125,7 +185,7 @@ export async function listBackups(): Promise<StoredBackup[]> {
   const out: StoredBackup[] = [];
   for (const name of entries.filter((n) => n.endsWith(".zip"))) {
     const st = await fsp.stat(path.join(/*turbopackIgnore: true*/ BACKUP_DIR, name));
-    const kind = (["auto", "manual", "antes-de-restaurar"] as const).find((k) => name.startsWith(`jardon-${k}-`)) ?? "otra";
+    const kind = (["auto", "manual", "antes-de-restaurar", "antes-de-actualizar"] as const).find((k) => name.startsWith(`jardon-${k}-`)) ?? "otra";
     out.push({ name, size: st.size, createdAt: st.mtime, kind });
   }
   return out.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());

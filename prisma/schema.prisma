@@ -219,6 +219,10 @@ model Settings {
   autoBackup             Boolean   @default(true)
   autoBackupKeep         Int       @default(14) // Nº de copias diarias que se conservan
   lastAutoBackupAt       DateTime?
+  /// Segunda copia: carpeta en un disco externo, pendrive o NAS donde se duplica cada copia
+  backupMirrorDir        String?
+  lastMirrorAt           DateTime?
+  lastMirrorError        String?
   updatedAt              DateTime  @updatedAt
 }
 

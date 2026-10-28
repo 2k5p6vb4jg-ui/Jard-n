@@ -5,7 +5,7 @@ import path from "node:path";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { cookieOptions, createSessionToken, hashPin, invalidateAuthCache, isValidPin, SESSION_COOKIE, verifyPin } from "@/lib/auth";
-import { createBackupFile } from "@/lib/backup";
+import { BACKUP_DIR, createBackupFile, listBackups, mirrorBackup, testWritableDir, verifyBackup } from "@/lib/backup";
 import { DEFAULT_COLORS, isHexColor } from "@/lib/branding.colors";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
@@ -150,10 +150,25 @@ export async function removePin(_prev: ActionState, fd: FormData): Promise<Actio
 
 export async function saveBackupOptions(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const res = await handle(async () => {
+    const mirror = str(fd, "backupMirrorDir");
+    if (mirror) {
+      if (!path.isAbsolute(mirror)) throw new FormError("Escriba la ruta completa de la carpeta, por ejemplo E:\\CopiasJardon o \\\\NAS\\copias.");
+      try {
+        await testWritableDir(mirror);
+      } catch (e) {
+        throw new FormError(`No se puede escribir en «${mirror}»: ${(e as Error).message}. ¿Está conectado el disco?`);
+      }
+    }
+    const before = await prisma.settings.findUnique({ where: { id: 1 }, select: { backupMirrorDir: true } });
     await prisma.settings.update({
       where: { id: 1 },
-      data: { autoBackup: bool(fd, "autoBackup"), autoBackupKeep: inRange(int(fd, "autoBackupKeep"), 1, 365, "Copias a conservar") },
+      data: { autoBackup: bool(fd, "autoBackup"), autoBackupKeep: inRange(int(fd, "autoBackupKeep"), 1, 365, "Copias a conservar"), backupMirrorDir: mirror, ...(!mirror && { lastMirrorError: null }) },
     });
+    // Al indicar una carpeta nueva se lleva allí enseguida la copia más reciente
+    if (mirror && mirror !== before?.backupMirrorDir) {
+      const latest = (await listBackups())[0];
+      if (latest) await mirrorBackup(path.join(BACKUP_DIR, latest.name));
+    }
   });
   if (!res?.error) revalidatePath("/configuracion");
   return res;
@@ -167,4 +182,20 @@ export async function backupNow(_prev: ActionState, _fd: FormData): Promise<Acti
   });
   revalidatePath("/configuracion");
   return res;
+}
+
+/** Comprueba la copia más reciente sin restaurarla. */
+export async function verifyLatestBackup(_prev: { ok?: boolean; message?: string } | undefined, _fd: FormData): Promise<{ ok: boolean; message: string }> {
+  const latest = (await listBackups())[0];
+  if (!latest) return { ok: false, message: "Todavía no hay ninguna copia guardada en el equipo." };
+  try {
+    const r = await verifyBackup(path.join(BACKUP_DIR, latest.name));
+    await audit("VIEW", "Backup", undefined, `Comprobada ${latest.name}`);
+    return {
+      ok: true,
+      message: `Copia correcta (${new Date(r.createdAt).toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" })}): ${r.patients} clientes, ${r.workOrders} reparaciones y ${r.files} archivos. Se podría restaurar sin problemas.`,
+    };
+  } catch (e) {
+    return { ok: false, message: `La copia ${latest.name} no es válida: ${(e as Error).message}` };
+  }
 }

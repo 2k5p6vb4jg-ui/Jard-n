@@ -44,7 +44,7 @@ function Kpi({ href, label, value, hint, icon: Icon, tone = "plain" }: { href: s
 
 export default async function DashboardPage() {
   const today = new Date(new Date().setHours(0, 0, 0, 0));
-  const [alerts, byStatus, activeOrders, st, insoleOpts, openInsoles, lateOrders, dueVisits, orders] = await Promise.all([
+  const [alerts, byStatus, activeOrders, st, insoleOpts, openInsoles, lateOrders, dueVisits, orders, backup] = await Promise.all([
     getRenewalAlerts(),
     prisma.workOrder.groupBy({ by: ["status"], _count: { _all: true } }),
     prisma.workOrder.findMany({
@@ -67,6 +67,7 @@ export default async function DashboardPage() {
     prisma.workOrder.count({ where: { status: { notIn: ["DELIVERED", "CANCELLED"] }, promisedAt: { lt: today } } }),
     getDueVisits(14),
     orderCounts(),
+    prisma.settings.findUnique({ where: { id: 1 }, select: { autoBackup: true, lastAutoBackupAt: true, backupMirrorDir: true, lastMirrorError: true } }),
   ]);
 
   const count = (s: string) => byStatus.find((b) => b.status === s)?._count._all ?? 0;
@@ -82,6 +83,18 @@ export default async function DashboardPage() {
 
   return (
     <>
+      {/* Aviso si las copias de seguridad no se están haciendo bien */}
+      {backup && ((backup.autoBackup && (!backup.lastAutoBackupAt || backup.lastAutoBackupAt < new Date(Date.now() - 3 * 86_400_000))) || (backup.backupMirrorDir && backup.lastMirrorError)) && (
+        <Link href="/configuracion" className="mb-5 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 hover:bg-rose-100">
+          <AlertTriangle className="mt-0.5 size-5 shrink-0" />
+          <span>
+            <strong>Revise las copias de seguridad.</strong>{" "}
+            {backup.backupMirrorDir && backup.lastMirrorError
+              ? `La segunda copia en «${backup.backupMirrorDir}» falla (¿está conectado el disco?).`
+              : "Hace más de 3 días que no se hace la copia automática."}
+          </span>
+        </Link>
+      )}
       <PageHeader
         eyebrow={new Intl.DateTimeFormat("es-ES", { dateStyle: "full" }).format(new Date())}
         title={hour < 14 ? "Buenos días" : hour < 21 ? "Buenas tardes" : "Buenas noches"}
