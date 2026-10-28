@@ -40,5 +40,6 @@ export async function getInsoleOrderFormOptions(): Promise<InsoleOrderFormOption
     prisma.patient.findMany({ where: { archivedAt: null }, select: { id: true, firstName: true, lastName: true, dni: true, phone: true }, orderBy: [{ lastName: "asc" }, { firstName: "asc" }] }),
     getInsoleOptions(),
   ]);
-  return { patients, ...opts };
+  const { getCentersForSelect } = await import("./centers");
+  return { patients, ...opts, centers: await getCentersForSelect() };
 }

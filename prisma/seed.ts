@@ -48,6 +48,8 @@ async function reset() {
   await prisma.insolePathology.deleteMany();
   await prisma.insolePrescription.deleteMany();
   await prisma.compressionStocking.deleteMany();
+  await prisma.centerContact.deleteMany();
+  await prisma.center.deleteMany();
   await prisma.patient.deleteMany();
   await prisma.settings.deleteMany();
 }
@@ -114,6 +116,33 @@ async function main() {
     ),
   );
   const [carmen, javier, mariaJose, antonio, lucia, francisco, elena, manuel] = p;
+
+  // ── Centros (B2B): residencias y centros de día ─────────────────────────
+  const centerOpt = async (kind: "CENTER_TYPE" | "CENTER_STATUS", match: { key?: string; label?: string }) =>
+    (await prisma.catalogOption.findFirst({ where: { kind, ...match } }))?.id ?? (await prisma.catalogOption.findFirstOrThrow({ where: { kind } })).id;
+  const naranjos = await prisma.center.create({
+    data: {
+      name: "Residencia Los Naranjos", typeId: await centerOpt("CENTER_TYPE", { label: "Residencia privada" }), statusId: await centerOpt("CENTER_STATUS", { key: "ACTIVE" }),
+      taxId: "B98765432", phone: "961 222 333", email: "direccion@losnaranjos.example", address: "Avda. de los Naranjos, 40", postalCode: "46022", city: "Valencia",
+      places: 120, conditions: "5 % de descuento en recambios. Pago a 30 días.", notes: "Renuevan parte de las sillas manuales cada año. Decide compras la directora.",
+      contacts: { create: [{ name: "Marta Ruiz", role: "Directora", phone: "961 222 334", email: "marta@losnaranjos.example" }, { name: "Jorge Peris", role: "Mantenimiento", phone: "699 111 222" }] },
+    },
+  });
+  const virgenCarmen = await prisma.center.create({
+    data: {
+      name: "Centro de Día Virgen del Carmen", typeId: await centerOpt("CENTER_TYPE", { label: "Centro de día" }), statusId: await centerOpt("CENTER_STATUS", { key: "ACTIVE" }),
+      phone: "961 555 444", city: "Torrent", places: 45, notes: "Derivan a familiares cuando necesitan plantillas o medias.",
+      contacts: { create: [{ name: "Laura Gómez", role: "Trabajadora social", phone: "961 555 445" }] },
+    },
+  });
+  await prisma.center.create({
+    data: {
+      name: "Residencia Mar Azul", typeId: await centerOpt("CENTER_TYPE", { label: "Residencia privada" }), statusId: await centerOpt("CENTER_STATUS", { key: "PROSPECT" }),
+      city: "Alboraya", places: 80, notes: "Primera visita en septiembre. Interesados en un contrato de mantenimiento de grúas.",
+    },
+  });
+  await prisma.patient.update({ where: { id: francisco.id }, data: { centerId: naranjos.id } });
+  await prisma.patient.update({ where: { id: mariaJose.id }, data: { centerId: virgenCarmen.id } });
 
   // ── Plantillas a medida (renovación 12 meses) ───────────────────────────
   const insoles: {
@@ -489,6 +518,31 @@ async function main() {
     }
   }
 
+  // Pedidos de los centros: compra directa de la residencia, sus sillas en trazabilidad y unas plantillas derivadas
+  const sillasResidencia = [];
+  for (let k = 1; k <= 3; k++) {
+    sillasResidencia.push(
+      await prisma.trackedProduct.create({
+        data: {
+          serialNumber: `BRZ-PREM-2025-${1040 + k}`, categoryId: eq("MANUAL_WHEELCHAIR"), brand: "Breezy", model: "Premier", centerId: naranjos.id,
+          deliveredAt: daysAgo(420), warrantyMonths: 24, warrantyUntil: addMonths(daysAgo(420), 24), salePriceCents: 39000,
+        },
+      }),
+    );
+  }
+  const directa = await prisma.workOrder.create({
+    data: {
+      code: code(), centerId: naranjos.id, centerLink: "ORDERED", customerName: "Residencia Los Naranjos", customerPhone: "961 222 333",
+      productId: sillasResidencia[0].id, equipmentCategoryId: eq("MANUAL_WHEELCHAIR"), equipmentBrand: "Breezy", equipmentModel: "Premier", serialNumber: sillasResidencia[0].serialNumber,
+      serviceTypeId: sv("GENERAL_REPAIR"), priorityId: pr("NORMAL"), status: "DELIVERED", reportedIssue: "Rueda delantera con holgura.", workDone: "Cambio de horquilla y rueda.",
+      technicianId: tecMario.id, laborMode: "FIXED", laborFixedCents: 3500, receivedAt: daysAgo(45), completedAt: daysAgo(41), deliveredAt: daysAgo(40),
+      parts: { create: [{ categoryId: pc("WHEEL"), description: "Rueda delantera 8\" maciza", quantity: 1, unitCostCents: 1400, unitPriceCents: 2600 }] },
+      statusHistory: { create: [{ toStatus: "RECEIVED", changedAt: daysAgo(45) }, { fromStatus: "READY", toStatus: "DELIVERED", changedAt: daysAgo(40) }] },
+    },
+  });
+  await prisma.productIntervention.create({ data: { productId: sillasResidencia[0].id, workOrderId: directa.id, type: "REPAIR", date: daysAgo(40), description: directa.workDone! } });
+  await prisma.insoleOrder.updateMany({ where: { patientId: antonio.id }, data: { centerId: virgenCarmen.id, centerLink: "REFERRED" } });
+
   // ── Histórico de 12 meses (para que las estadísticas tengan datos) ──────
   // Pseudoaleatorio con semilla fija: el resultado es siempre el mismo
   let seedN = 42;
@@ -546,6 +600,7 @@ async function main() {
     medias: await prisma.compressionStocking.count(),
     ordenesTaller: await prisma.workOrder.count(),
     productos: await prisma.trackedProduct.count(),
+    centros: await prisma.center.count(),
   };
   console.log("✅ Datos de prueba cargados:", counts);
 }

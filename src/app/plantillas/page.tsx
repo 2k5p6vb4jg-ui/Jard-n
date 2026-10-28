@@ -6,6 +6,8 @@ import { formatEUR } from "@/lib/money";
 import { side } from "@/lib/labels";
 import { matcher } from "@/lib/search";
 import { getInsoleOptions, statusTones } from "@/lib/insoleOrders";
+import { getCentersForSelect } from "@/lib/centers";
+import { UrlSelect } from "@/components/ui/UrlSelect";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
@@ -15,15 +17,18 @@ import { Cell, chipClass, Row, RowLink, Table } from "@/components/ui/Table";
 
 export const metadata = { title: "Plantillas" };
 
-export default async function InsoleOrdersPage({ searchParams }: { searchParams: Promise<{ estado?: string; q?: string }> }) {
-  const { estado = "", q = "" } = await searchParams;
-  const { statuses } = await getInsoleOptions();
+export default async function InsoleOrdersPage({ searchParams }: { searchParams: Promise<{ estado?: string; q?: string; centro?: string }> }) {
+  const { estado = "", q = "", centro = "" } = await searchParams;
+  const [{ statuses }, centers] = await Promise.all([getInsoleOptions(), getCentersForSelect()]);
   const tones = statusTones(statuses);
   const status = statuses.find((s) => s.id === estado);
   const all = estado === "todas";
 
   const rows = await prisma.insoleOrder.findMany({
-    where: status ? { statusId: status.id } : all || q.trim() ? undefined : { status: { isFinal: false } },
+    where: {
+      ...(status ? { statusId: status.id } : all || q.trim() ? {} : { status: { isFinal: false } }),
+      ...(centro && { OR: [{ centerId: centro }, { centerId: null, patient: { centerId: centro } }] }),
+    },
     include: { patient: { select: { firstName: true, lastName: true, phone: true, dni: true } }, type: true, material: true, status: true },
     orderBy: [{ createdAt: "desc" }],
   });
@@ -39,7 +44,7 @@ export default async function InsoleOrdersPage({ searchParams }: { searchParams:
   const chip = (value: string, label: string, active: boolean) => (
     <Link
       key={value || "curso"}
-      href={{ pathname: "/plantillas", query: { ...(value && { estado: value }), ...(q && { q }) } }}
+      href={{ pathname: "/plantillas", query: { ...(value && { estado: value }), ...(q && { q }), ...(centro && { centro }) } }}
       className={chipClass(active)}
     >
       {label}
@@ -55,9 +60,15 @@ export default async function InsoleOrdersPage({ searchParams }: { searchParams:
       />
       <form className="relative mb-4">
         {estado && <input type="hidden" name="estado" value={estado} />}
+        {centro && <input type="hidden" name="centro" value={centro} />}
         <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
         <input name="q" defaultValue={q} type="search" placeholder="Buscar por cliente, teléfono, código PL-…, tipo o material" aria-label="Buscar plantillas" className="field pl-12" />
       </form>
+      {centers.length > 0 && (
+        <div className="mb-3">
+          <UrlSelect param="centro" label="Filtrar por centro" placeholder="Todos los clientes y centros" options={centers.map((c) => ({ value: c.id, label: c.label }))} />
+        </div>
+      )}
       <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
         {chip("", q.trim() ? "Todas" : "En curso", !status && !all)}
         {statuses.filter((s) => s.active || s.id === estado).map((s) => chip(s.id, s.label, status?.id === s.id))}

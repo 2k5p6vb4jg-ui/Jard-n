@@ -1,4 +1,4 @@
-import { BarChart3, BellRing, Palette, Building2, DatabaseBackup, ListChecks, ScanBarcode, FolderDown, HardDriveDownload, ImageIcon, Info, KeyRound, Lock, Plus, Receipt, Save, ScrollText, ShieldAlert, Trash2, Users } from "lucide-react";
+import { BarChart3, BellRing, Building, Palette, Building2, DatabaseBackup, ListChecks, ScanBarcode, FolderDown, HardDriveDownload, ImageIcon, Info, KeyRound, Lock, Plus, Receipt, Save, ScrollText, ShieldAlert, Trash2, Users } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { toEurosInput } from "@/lib/forms";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -40,6 +40,7 @@ export default async function SettingsPage() {
 
       {/* En el móvil estas secciones no caben en la barra inferior */}
       <div className="mb-6 grid grid-cols-2 gap-2 lg:hidden">
+        <LinkButton href="/centros" variant="secondary" icon={Building}>Centros</LinkButton>
         <LinkButton href="/trazabilidad" variant="secondary" icon={ScanBarcode}>Trazabilidad</LinkButton>
         <LinkButton href="/estadisticas" variant="secondary" icon={BarChart3}>Estadísticas</LinkButton>
       </div>

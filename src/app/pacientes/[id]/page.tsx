@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
+  Building2,
   CalendarClock,
   ChevronDown,
   FileDown,
@@ -87,6 +88,7 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
       stockings: { orderBy: { measuredAt: "desc" } },
       documents: { orderBy: { createdAt: "desc" } },
       workOrders: { include: { equipmentCategory: { select: { label: true } } }, orderBy: { receivedAt: "desc" } },
+      center: { select: { id: true, name: true } },
       insoleOrders: { include: { type: true, material: true, status: true }, orderBy: { createdAt: "desc" } },
     },
   });
@@ -117,6 +119,11 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
         description={[patient.dni, patient.phone, patient.city].filter(Boolean).join(" · ") || undefined}
         actions={
           <>
+            {patient.center && (
+              <Link href={`/centros/${patient.center.id}`} className="self-center">
+                <Badge tone="teal"><Building2 className="size-3.5" />{patient.center.name}</Badge>
+              </Link>
+            )}
             <span className="self-center">
               {patient.gdprConsent ? <Badge tone="emerald"><ShieldCheck className="size-3.5" />Consentimiento RGPD</Badge> : <Badge tone="rose">Sin consentimiento RGPD</Badge>}
             </span>

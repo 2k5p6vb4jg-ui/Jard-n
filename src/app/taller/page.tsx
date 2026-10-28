@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/dates";
 import { WORK_ORDER_FLOW, priorityTone, workOrderStatus } from "@/lib/labels";
 import { getStatusLabels } from "@/lib/workOrderOptions";
+import { getCentersForSelect } from "@/lib/centers";
+import { UrlSelect } from "@/components/ui/UrlSelect";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
@@ -14,13 +16,16 @@ import { Cell, chipClass, Row, RowLink, Table } from "@/components/ui/Table";
 
 export const metadata = { title: "Reparaciones" };
 
-export default async function WorkshopPage({ searchParams }: { searchParams: Promise<{ estado?: string }> }) {
-  const { estado } = await searchParams;
+export default async function WorkshopPage({ searchParams }: { searchParams: Promise<{ estado?: string; centro?: string }> }) {
+  const { estado, centro } = await searchParams;
   const status = estado && estado in workOrderStatus ? (estado as WorkOrderStatus) : undefined;
 
-  const st = await getStatusLabels();
+  const [st, centers] = await Promise.all([getStatusLabels(), getCentersForSelect()]);
   const orders = await prisma.workOrder.findMany({
-    where: status ? { status } : { status: { notIn: ["DELIVERED", "CANCELLED"] } },
+    where: {
+      ...(status ? { status } : { status: { notIn: ["DELIVERED", "CANCELLED"] } }),
+      ...(centro && { OR: [{ centerId: centro }, { centerId: null, patient: { centerId: centro } }] }),
+    },
     include: {
       patient: { select: { firstName: true, lastName: true } },
       technician: { select: { name: true } },
@@ -32,7 +37,7 @@ export default async function WorkshopPage({ searchParams }: { searchParams: Pro
   });
 
   const chip = (href: string, label: string, active: boolean) => (
-    <Link key={href} href={href} className={chipClass(active)}>
+    <Link key={href} href={centro ? `${href}${href.includes("?") ? "&" : "?"}centro=${centro}` : href} className={chipClass(active)}>
       {label}
     </Link>
   );
@@ -46,6 +51,11 @@ export default async function WorkshopPage({ searchParams }: { searchParams: Pro
         description="Sillas de ruedas, scooters, grúas, andadores, órtesis y prótesis"
         actions={<LinkButton href="/taller/nueva" icon={ClipboardPlus}>Nueva reparación</LinkButton>}
       />
+      {centers.length > 0 && (
+        <div className="mb-3">
+          <UrlSelect param="centro" label="Filtrar por centro" placeholder="Todos los clientes y centros" options={centers.map((c) => ({ value: c.id, label: c.label }))} />
+        </div>
+      )}
       <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
         {chip("/taller", "Activas", !status)}
         {WORK_ORDER_FLOW.map((s) => chip(`/taller?estado=${s}`, st[s], status === s))}

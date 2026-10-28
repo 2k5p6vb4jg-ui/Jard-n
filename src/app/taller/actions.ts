@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { type InterventionType, LaborMode, WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { readOption } from "@/lib/options";
+import { readCenterLink } from "@/lib/centers";
 import { WORK_ORDER_FLOW } from "@/lib/labels";
 import { type ActionState, bool, cents, date, FormError, handle, num, oneOf, required, str } from "@/lib/forms";
 
@@ -59,6 +60,7 @@ async function workOrderData(fd: FormData) {
 
   return {
     patientId,
+    ...(await readCenterLink(fd, patientId)),
     customerName: patientId ? null : customerName,
     customerPhone: patientId ? null : str(fd, "customerPhone"),
     productId,

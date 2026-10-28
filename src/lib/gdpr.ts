@@ -36,6 +36,7 @@ export async function collectPatientData(patientId: string) {
         orderBy: { receivedAt: "asc" },
       },
       insoleOrders: { include: { type: true, material: true, status: true, photos: true }, orderBy: { createdAt: "asc" } },
+      center: { select: { name: true } },
       products: { include: { category: true, interventions: { orderBy: { date: "asc" } } } },
     },
   });
@@ -60,6 +61,7 @@ async function reportPdf(p: PatientData): Promise<Uint8Array> {
         ["Email", p.email ?? ""],
         ["Dirección", [p.address, p.postalCode, p.city].filter(Boolean).join(", ")],
         ["Tarjeta sanitaria", p.healthCardNo ?? ""],
+        ["Centro al que acude", p.center?.name ?? ""],
         ["Observaciones", p.notes ?? ""],
         ["Alta en el sistema", formatDate(p.createdAt)],
       ],

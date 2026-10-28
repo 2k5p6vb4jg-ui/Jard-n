@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Camera, Check, CircleDollarSign, Footprints, Pencil, Phone, Plus, RefreshCw, Trash2, User } from "lucide-react";
+import { Building2, Camera, Check, CircleDollarSign, Footprints, Pencil, Phone, Plus, RefreshCw, Trash2, User } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/dates";
 import { formatEUR } from "@/lib/money";
-import { side } from "@/lib/labels";
+import { centerLink, side } from "@/lib/labels";
 import { getInsoleOptions, statusTones } from "@/lib/insoleOrders";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -18,7 +18,7 @@ import { deleteInsoleOrder, setInsoleOrderStatus, togglePaid } from "../actions"
 export default async function InsoleOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [order, { statuses }] = await Promise.all([
-    prisma.insoleOrder.findUnique({ where: { id }, include: { patient: true, type: true, material: true, status: true, photos: { orderBy: { createdAt: "asc" } } } }),
+    prisma.insoleOrder.findUnique({ where: { id }, include: { patient: true, center: { select: { id: true, name: true } }, type: true, material: true, status: true, photos: { orderBy: { createdAt: "asc" } } } }),
     getInsoleOptions(),
   ]);
   if (!order) notFound();
@@ -98,6 +98,11 @@ export default async function InsoleOrderPage({ params }: { params: Promise<{ id
                   <a href={`tel:${p.phone.replace(/\s/g, "")}`}>{p.phone}</a>
                 </p>
               )}
+              {order.center && order.centerLink && (
+            <Link href={`/centros/${order.center.id}`} className="inline-flex max-w-full">
+              <Badge tone={centerLink[order.centerLink].tone}><Building2 className="size-3.5 shrink-0" /><span className="truncate">{order.center.name} · {centerLink[order.centerLink].short}</span></Badge>
+            </Link>
+          )}
               <LinkButton href={`/plantillas/nueva?paciente=${p.id}`} variant="secondary" icon={Plus} className="mt-2 w-full">Otras plantillas para este cliente</LinkButton>
             </div>
           </Card>

@@ -7,9 +7,9 @@ import { audit } from "@/lib/audit";
 import { type ActionState, bool, FormError, handle, required } from "@/lib/forms";
 
 /** Listas en las que siempre debe quedar al menos una opción activa (el formulario la exige). */
-const NEED_ONE_ACTIVE: OptionKind[] = ["TYPE", "STATUS", "EQUIPMENT_CATEGORY", "SERVICE_TYPE", "PART_CATEGORY", "PRIORITY"];
+const NEED_ONE_ACTIVE: OptionKind[] = ["TYPE", "STATUS", "EQUIPMENT_CATEGORY", "SERVICE_TYPE", "PART_CATEGORY", "PRIORITY", "CENTER_TYPE", "CENTER_STATUS"];
 
-const usage = { select: { typeOrders: true, materialOrders: true, statusOrders: true, equipmentOrders: true, serviceOrders: true, priorityOrders: true, parts: true, products: true } };
+const usage = { select: { typeOrders: true, materialOrders: true, statusOrders: true, equipmentOrders: true, serviceOrders: true, priorityOrders: true, parts: true, products: true, centerTypes: true, centerStatuses: true } };
 
 /** Alta (id = null) o edición de una opción. Los estados de reparación solo se renombran: su flujo lo fija la app. */
 export async function saveOption(id: string | null, kind: OptionKind, _prev: ActionState, fd: FormData): Promise<ActionState> {

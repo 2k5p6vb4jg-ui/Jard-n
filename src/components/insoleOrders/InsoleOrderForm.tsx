@@ -3,6 +3,7 @@ import type { InsoleOrder } from "@prisma/client";
 import { type ActionState, optionChoices, toDateInput, toEurosInput } from "@/lib/forms";
 import { side } from "@/lib/labels";
 import { ActionForm } from "@/components/ui/Form";
+import { CenterFields } from "@/components/centers/CenterFields";
 import { CheckboxField, FormSection, MoneyField, NumberField, SelectField, TextAreaField, TextField } from "@/components/ui/Fields";
 
 type Opt = { id: string; label: string; active: boolean; isFinal?: boolean };
@@ -12,6 +13,7 @@ export interface InsoleOrderFormOptions {
   types: Opt[];
   materials: Opt[];
   statuses: Opt[];
+  centers: { id: string; label: string }[];
 }
 
 const choices = optionChoices;
@@ -26,7 +28,7 @@ export function InsoleOrderForm({
   action: (s: ActionState, fd: FormData) => Promise<ActionState>;
   order?: InsoleOrder;
   options: InsoleOrderFormOptions;
-  defaults?: { patientId?: string };
+  defaults?: { patientId?: string; centerId?: string };
   cancelHref: string;
 }) {
   const firstOpen = options.statuses.find((s) => s.active && !s.isFinal)?.id;
@@ -43,6 +45,7 @@ export function InsoleOrderForm({
           options={options.patients.map((p) => ({ value: p.id, label: `${p.lastName}, ${p.firstName}${p.dni ? ` · ${p.dni}` : p.phone ? ` · ${p.phone}` : ""}` }))}
           hint="¿No está en la lista? Dé de alta la ficha en Clientes → Nuevo."
         />
+        <CenterFields centers={options.centers} centerId={order?.centerId ?? defaults?.centerId} link={order?.centerLink ?? (defaults?.centerId ? "ORDERED" : undefined)} />
       </FormSection>
 
       <FormSection title="Plantillas" icon={Footprints}>

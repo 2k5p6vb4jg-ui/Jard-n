@@ -255,8 +255,12 @@ model Patient {
   workOrders   WorkOrder[]
   products     TrackedProduct[]
   insoleOrders InsoleOrder[]
+  /// Residencia o centro de día al que acude (opcional)
+  centerId     String?
+  center       Center?               @relation(fields: [centerId], references: [id], onDelete: SetNull)
 
   @@index([lastName, firstName])
+  @@index([centerId])
   @@index([phone])
 }
 
@@ -469,10 +473,14 @@ model WorkOrder {
   code String @unique
 
   patientId     String?
-  patient       Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  patient       Patient?    @relation(fields: [patientId], references: [id], onDelete: SetNull)
   // Cliente no paciente (residencia, mutua, particular sin ficha clínica)
   customerName  String?
   customerPhone String?
+  // Centro relacionado (B2B)
+  centerId      String?
+  center        Center?     @relation(fields: [centerId], references: [id], onDelete: SetNull)
+  centerLink    CenterLink?
 
   // Equipo
   productId           String?
@@ -525,6 +533,7 @@ model WorkOrder {
   @@index([status])
   @@index([patientId])
   @@index([productId])
+  @@index([centerId])
 }
 
 /// Piezas y materiales consumidos en la orden.
@@ -622,6 +631,16 @@ enum OptionKind {
   PART_CATEGORY
   PRIORITY
   WORK_STATUS
+  // Centros
+  CENTER_TYPE
+  CENTER_STATUS
+}
+
+/// Relación de un pedido (reparación o plantillas) con un centro.
+enum CenterLink {
+  ORDERED // Pedido directo del centro (compra para el centro)
+  REFERRED // Derivado por el centro (el cliente viene por recomendación suya)
+  RESIDENT // El cliente es usuario/residente del centro
 }
 
 /// Opciones editables desde Ajustes → Opciones (Reparaciones y Plantillas).
@@ -647,6 +666,8 @@ model CatalogOption {
   priorityOrders  WorkOrder[]      @relation("WorkOrderPriority")
   parts           WorkOrderPart[]
   products        TrackedProduct[]
+  centerTypes     Center[]         @relation("CenterType")
+  centerStatuses  Center[]         @relation("CenterStatus")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -664,6 +685,10 @@ model InsoleOrder {
 
   patientId String
   patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  centerId   String?
+  center     Center?     @relation(fields: [centerId], references: [id], onDelete: SetNull)
+  centerLink CenterLink?
 
   typeId     String
   type       CatalogOption  @relation("InsoleOrderType", fields: [typeId], references: [id], onDelete: Restrict)
@@ -686,6 +711,7 @@ model InsoleOrder {
   updatedAt DateTime @updatedAt
 
   @@index([patientId])
+  @@index([centerId])
   @@index([statusId])
 }
 
@@ -707,6 +733,54 @@ model Photo {
 }
 
 // ----------------------------------------------------------------------------
+//  MÓDULO 2c · CENTROS (B2B: residencias, centros de día…)
+// ----------------------------------------------------------------------------
+
+model Center {
+  id         String        @id @default(cuid())
+  name       String
+  typeId     String
+  type       CatalogOption @relation("CenterType", fields: [typeId], references: [id], onDelete: Restrict)
+  statusId   String
+  status     CatalogOption @relation("CenterStatus", fields: [statusId], references: [id], onDelete: Restrict)
+  taxId      String? // CIF
+  address    String?
+  postalCode String?
+  city       String?
+  phone      String?
+  email      String?
+  places     Int? // Nº de plazas
+  conditions String? // Descuento pactado, forma de pago…
+  notes      String?
+
+  contacts     CenterContact[]
+  patients     Patient[]
+  workOrders   WorkOrder[]
+  insoleOrders InsoleOrder[]
+  products     TrackedProduct[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+}
+
+/// Persona de contacto en un centro (dirección, compras, enfermería…)
+model CenterContact {
+  id       String  @id @default(cuid())
+  centerId String
+  center   Center  @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  name     String
+  role     String?
+  phone    String?
+  email    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([centerId])
+}
+
+// ----------------------------------------------------------------------------
 //  MÓDULO 3 · TRAZABILIDAD DE PRODUCTOS DE ALTO VALOR
 // ----------------------------------------------------------------------------
 
@@ -722,6 +796,10 @@ model TrackedProduct {
   udi            String? // Identificador único de dispositivo (MDR)
   supplier       String?
   manufacturedAt DateTime?
+
+  /// Equipo propiedad de un centro (en lugar de un paciente)
+  centerId String?
+  center   Center? @relation(fields: [centerId], references: [id], onDelete: SetNull)
 
   patientId String?
   patient   Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)

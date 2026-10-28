@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, FileText, Footprints, ScanBarcode, Search, Users, Wrench } from "lucide-react";
+import { Building2, ChevronRight, FileText, Footprints, ScanBarcode, Search, Users, Wrench } from "lucide-react";
 import { globalSearch } from "@/lib/search";
 import { formatDate } from "@/lib/dates";
 import { formatEUR } from "@/lib/money";
@@ -19,13 +19,13 @@ const row = "flex min-h-14 items-center gap-3 px-5 py-3 hover:bg-slate-50";
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q = "" } = await searchParams;
   const r = await globalSearch(q);
-  const total = r ? r.patients.length + r.orders.length + r.insoleOrders.length + r.products.length + r.quotes.length : 0;
+  const total = r ? r.centers.length + r.patients.length + r.orders.length + r.insoleOrders.length + r.products.length + r.quotes.length : 0;
   const st = await getStatusLabels();
   const tones = r?.insoleOrders.length ? statusTones((await getInsoleOptions()).statuses) : {};
 
   return (
     <>
-      <PageHeader title="Buscar" description="Clientes, reparaciones, plantillas, números de serie y presupuestos" />
+      <PageHeader title="Buscar" description="Clientes, centros, reparaciones, plantillas, números de serie y presupuestos" />
       <form className="relative mb-6">
         <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
         <input name="q" defaultValue={q} autoFocus placeholder="Nombre, DNI, teléfono, OT-2026-…, PL-2026-…, nº de serie…" className="field pl-12" />
@@ -37,6 +37,24 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         <Card><EmptyState icon={Search} title={`Sin resultados para «${q}»`} /></Card>
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {r.centers.length > 0 && (
+            <Card>
+              <CardHeader title="Centros" icon={Building2} subtitle={`${r.centers.length}`} />
+              <ul className="divide-y divide-slate-100">
+                {r.centers.map((c) => (
+                  <li key={c.id}>
+                    <Link href={`/centros/${c.id}`} className={row}>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-slate-800">{c.name}</p>
+                        <p className="truncate text-sm text-slate-500">{[c.type.label, c.city].filter(Boolean).join(" · ")}</p>
+                      </div>
+                      <ChevronRight className="size-5 text-slate-300" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
           {r.patients.length > 0 && (
             <Card>
               <CardHeader title="Clientes" icon={Users} subtitle={`${r.patients.length}`} />

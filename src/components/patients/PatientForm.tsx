@@ -2,15 +2,19 @@ import { Contact, MapPin, ShieldCheck, StickyNote } from "lucide-react";
 import type { Patient } from "@prisma/client";
 import { type ActionState, toDateInput } from "@/lib/forms";
 import { ActionForm } from "@/components/ui/Form";
-import { CheckboxField, FormSection, TextAreaField, TextField } from "@/components/ui/Fields";
+import { CheckboxField, FormSection, SelectField, TextAreaField, TextField } from "@/components/ui/Fields";
 
 export function PatientForm({
   action,
   patient,
+  centers = [],
+  defaultCenterId,
   cancelHref,
 }: {
   action: (s: ActionState, fd: FormData) => Promise<ActionState>;
   patient?: Patient;
+  centers?: { id: string; label: string }[];
+  defaultCenterId?: string;
   cancelHref: string;
 }) {
   return (
@@ -30,6 +34,17 @@ export function PatientForm({
         <TextField name="address" label="Dirección" defaultValue={patient?.address} className="sm:col-span-2 lg:col-span-3" />
         <TextField name="city" label="Localidad" defaultValue={patient?.city} />
         <TextField name="postalCode" label="Código postal" inputMode="numeric" defaultValue={patient?.postalCode} />
+        {centers.length > 0 && (
+          <SelectField
+            name="centerId"
+            label="Residencia o centro de día al que acude"
+            placeholder="— Ninguno —"
+            options={centers.map((c) => ({ value: c.id, label: c.label }))}
+            defaultValue={patient?.centerId ?? defaultCenterId}
+            className="sm:col-span-2 lg:col-span-3"
+            hint="Sus reparaciones y plantillas aparecerán también en la ficha del centro"
+          />
+        )}
       </FormSection>
 
       <FormSection title="Observaciones" icon={StickyNote}>

@@ -79,6 +79,7 @@ src/
     pacientes/           Listado, ficha clínica, alta
     taller/              Reparaciones: órdenes de trabajo por estado, detalle con costes
     plantillas/          Plantillas: listado con buscador, alta/edición, estado y cobro
+    centros/             Centros (B2B): listado, ficha con historial, equipos, clientes y contactos
     configuracion/opciones/    Ajustes → Opciones: listas editables de Reparaciones y Plantillas
     trazabilidad/        Productos por nº de serie e histórico de intervenciones
     configuracion/       Datos del negocio y copia de seguridad
@@ -137,6 +138,13 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
   prevista, estado, precio, pagado y observaciones; cambio de estado y de pago con un toque, aviso de «Retrasada».
   Tipos, materiales y estados se editan en **Ajustes → Opciones → Plantillas** (añadir, renombrar, ordenar,
   desactivar; un estado «final» saca el pedido de «En curso»).
+- **Centros (B2B):** residencias, centros de día y otros centros, con tipo y situación comercial editables (posible
+  cliente, activo, inactivo), plazas, condiciones pactadas, notas y personas de contacto. Cada reparación o plantillas
+  puede ir enlazada a un centro como **pedido del centro**, **derivado por el centro** o **usuario del centro** (si el
+  cliente acude a un centro se enlaza solo). Los equipos de trazabilidad pueden ser propiedad de un centro. La ficha del
+  centro muestra lo facturado en 12 meses (directo / a través del centro), su historial, sus equipos y sus clientes, y
+  permite vincular las reparaciones antiguas apuntadas a su nombre. Filtro por centro en Reparaciones y Plantillas y
+  origen de la facturación (particulares / centros) en Estadísticas.
 - **Ficha del cliente:** apartados **Reparaciones** y **Plantillas** con su historial y botón «Nueva», que abre el
   formulario con el cliente ya elegido. La prescripción clínica de plantillas (patologías, correcciones, avisos de
   renovación) sigue disponible, plegada al final de la ficha.

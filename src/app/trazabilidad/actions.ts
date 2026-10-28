@@ -7,6 +7,12 @@ import { readOption } from "@/lib/options";
 import { addMonths } from "@/lib/dates";
 import { type ActionState, bool, cents, date, FormError, handle, int, required, str } from "@/lib/forms";
 
+async function centerOf(fd: FormData) {
+  const id = str(fd, "centerId");
+  if (id && !(await prisma.center.findUnique({ where: { id }, select: { id: true } }))) throw new FormError("El centro seleccionado ya no existe.");
+  return id;
+}
+
 async function productData(fd: FormData) {
   const categoryId = await readOption(fd, "categoryId", "EQUIPMENT_CATEGORY", "Categoría", true);
   const warrantyMonths = int(fd, "warrantyMonths") ?? 24;
@@ -23,6 +29,7 @@ async function productData(fd: FormData) {
     supplier: str(fd, "supplier"),
     manufacturedAt: date(fd, "manufacturedAt"),
     patientId: str(fd, "patientId"),
+    centerId: await centerOf(fd),
     purchasePriceCents: cents(fd, "purchasePrice"),
     salePriceCents: cents(fd, "salePrice"),
     isPublicHealth: bool(fd, "isPublicHealth"),

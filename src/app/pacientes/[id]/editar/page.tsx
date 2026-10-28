@@ -3,8 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PatientForm } from "@/components/patients/PatientForm";
 import { updatePatient } from "../../actions";
+import { getCentersForSelect } from "@/lib/centers";
 
-export const metadata = { title: "Editar paciente" };
+export const metadata = { title: "Editar cliente" };
 
 export default async function EditPatientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -13,7 +14,7 @@ export default async function EditPatientPage({ params }: { params: Promise<{ id
   return (
     <>
       <PageHeader title={`Editar · ${patient.firstName} ${patient.lastName}`} />
-      <PatientForm action={updatePatient.bind(null, id)} patient={patient} cancelHref={`/pacientes/${id}`} />
+      <PatientForm action={updatePatient.bind(null, id)} patient={patient} centers={await getCentersForSelect()} cancelHref={`/pacientes/${id}`} />
     </>
   );
 }

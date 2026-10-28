@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Ban,
+  Building2,
   Camera,
   Check,
   Clock,
@@ -32,7 +33,7 @@ import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/dates";
 import { computeWorkOrderTotals, formatEUR } from "@/lib/money";
 import { toDateInput } from "@/lib/forms";
-import { WORK_ORDER_FLOW, priorityTone, quoteStatus, workOrderStatus } from "@/lib/labels";
+import { WORK_ORDER_FLOW, centerLink, priorityTone, quoteStatus, workOrderStatus } from "@/lib/labels";
 import { getStatusLabels, getWorkshopOptions } from "@/lib/workOrderOptions";
 import { optionChoices } from "@/lib/forms";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -57,6 +58,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
       where: { id },
       include: {
         patient: true,
+        center: { select: { id: true, name: true } },
         equipmentCategory: true,
         serviceType: true,
         priority: true,
@@ -137,6 +139,11 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
             <p className="mt-1 truncate font-semibold text-slate-900">{order.customerName}</p>
           )}
           {(order.patient?.phone ?? order.customerPhone) && <p className="truncate text-sm text-slate-500">{order.patient?.phone ?? order.customerPhone}</p>}
+          {order.center && order.centerLink && (
+            <Link href={`/centros/${order.center.id}`} className="mt-1 inline-flex max-w-full">
+              <Badge tone={centerLink[order.centerLink].tone}><Building2 className="size-3.5 shrink-0" /><span className="truncate">{order.center.name} · {centerLink[order.centerLink].short}</span></Badge>
+            </Link>
+          )}
         </div>
         <div className="p-4 lg:px-5">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Estado</p>

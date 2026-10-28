@@ -172,3 +172,15 @@ export const renewalStatus: Record<import("@prisma/client").RenewalStatus, { lab
   RENEWED: { label: "Renovada", tone: "emerald" },
   DISMISSED: { label: "No renueva", tone: "slate" },
 };
+
+/** Relación de un pedido con un centro (B2B) */
+export const centerLink: Record<import("@prisma/client").CenterLink, { label: string; short: string; tone: Tone }> = {
+  ORDERED: { label: "Pedido del centro", short: "Pedido directo", tone: "teal" },
+  REFERRED: { label: "Derivado por el centro", short: "Derivado", tone: "gold" },
+  RESIDENT: { label: "Usuario del centro", short: "Usuario", tone: "slate" },
+};
+
+/** Color de la situación comercial de un centro según su clave (las añadidas en Ajustes, en azul). */
+export function centerStatusTone(key: string | null): Tone {
+  return ({ ACTIVE: "emerald", PROSPECT: "gold", INACTIVE: "slate" } as Record<string, Tone>)[key ?? ""] ?? "sky";
+}

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowDown, ArrowUp, Flag, Layers, ListChecks, Package, Plus, Save, Shapes, Trash2, Wrench } from "lucide-react";
+import { ArrowDown, ArrowUp, Building2, Flag, Layers, ListChecks, Package, Plus, Save, Shapes, Trash2, Wrench } from "lucide-react";
 import type { OptionKind } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -14,7 +14,7 @@ export const metadata = { title: "Opciones" };
 
 type Section = { kind: OptionKind; title: string; icon: typeof Layers; subtitle: string; wide?: boolean };
 
-const TABS: Record<"reparaciones" | "plantillas", { label: string; sections: Section[] }> = {
+const TABS: Record<"reparaciones" | "plantillas" | "centros", { label: string; sections: Section[] }> = {
   reparaciones: {
     label: "Reparaciones",
     sections: [
@@ -33,19 +33,26 @@ const TABS: Record<"reparaciones" | "plantillas", { label: string; sections: Sec
       { kind: "MATERIAL", title: "Materiales", icon: Layers, subtitle: "EVA, resina, corcho…" },
     ],
   },
+  centros: {
+    label: "Centros",
+    sections: [
+      { kind: "CENTER_TYPE", title: "Tipos de centro", icon: Building2, subtitle: "Residencia privada, centro de día…" },
+      { kind: "CENTER_STATUS", title: "Situación comercial", icon: Flag, subtitle: "Posible cliente, activo, inactivo…" },
+    ],
+  },
 };
 
 const iconBtn = "grid size-11 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30";
 
 export default async function OptionsPage({ searchParams }: { searchParams: Promise<{ pestana?: string }> }) {
   const { pestana } = await searchParams;
-  const tab = pestana === "plantillas" ? "plantillas" : "reparaciones";
+  const tab = pestana === "plantillas" || pestana === "centros" ? pestana : "reparaciones";
   const { sections } = TABS[tab];
   const options = await prisma.catalogOption.findMany({
     where: { kind: { in: sections.map((x) => x.kind) } },
     orderBy: [{ sortOrder: "asc" }, { label: "asc" }],
     include: {
-      _count: { select: { typeOrders: true, materialOrders: true, statusOrders: true, equipmentOrders: true, serviceOrders: true, priorityOrders: true, parts: true, products: true } },
+      _count: { select: { typeOrders: true, materialOrders: true, statusOrders: true, equipmentOrders: true, serviceOrders: true, priorityOrders: true, parts: true, products: true, centerTypes: true, centerStatuses: true } },
     },
   });
 

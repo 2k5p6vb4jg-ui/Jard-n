@@ -3,6 +3,7 @@ import type { WorkOrder } from "@prisma/client";
 import { type ActionState, optionChoices, toDateInput, toEurosInput } from "@/lib/forms";
 import { laborMode } from "@/lib/labels";
 import { ActionForm } from "@/components/ui/Form";
+import { CenterFields } from "@/components/centers/CenterFields";
 import { CheckboxField, FormSection, MoneyField, NumberField, SelectField, TextAreaField, TextField } from "@/components/ui/Fields";
 
 export interface WorkOrderFormOptions {
@@ -13,6 +14,7 @@ export interface WorkOrderFormOptions {
   categories: Opt[];
   services: Opt[];
   priorities: (Opt & { key: string | null })[];
+  centers: { id: string; label: string }[];
 }
 
 type Opt = { id: string; label: string; active: boolean };
@@ -27,7 +29,7 @@ export function WorkOrderForm({
   action: (s: ActionState, fd: FormData) => Promise<ActionState>;
   order?: WorkOrder;
   options: WorkOrderFormOptions;
-  defaults?: { patientId?: string; productId?: string };
+  defaults?: { patientId?: string; productId?: string; centerId?: string };
   cancelHref: string;
 }) {
   return (
@@ -43,6 +45,7 @@ export function WorkOrderForm({
         />
         <TextField name="customerName" label="Nombre del cliente (si no tiene ficha)" defaultValue={order?.customerName} className="sm:col-span-1 lg:col-span-2" />
         <TextField name="customerPhone" label="Teléfono del cliente" type="tel" inputMode="tel" defaultValue={order?.customerPhone} />
+        <CenterFields centers={options.centers} centerId={order?.centerId ?? defaults?.centerId} link={order?.centerLink ?? (defaults?.centerId ? "ORDERED" : undefined)} />
       </FormSection>
 
       <FormSection title="Equipo" icon={PackageSearch} description="Si está en Trazabilidad, selecciónelo y se completan marca, modelo y nº de serie">

@@ -6,6 +6,7 @@ import { Side } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import { readOption } from "@/lib/options";
+import { readCenterLink } from "@/lib/centers";
 import { deletePhotoFolder } from "@/lib/storage";
 import { nextInsoleOrderCode } from "@/lib/insoleOrders";
 import { type ActionState, bool, cents, date, FormError, handle, num, oneOf, required, str } from "@/lib/forms";
@@ -25,6 +26,7 @@ async function insoleOrderData(fd: FormData) {
   if (priceCents !== null && priceCents < 0) throw new FormError("El precio no puede ser negativo.");
   return {
     patientId,
+    ...(await readCenterLink(fd, patientId)),
     typeId: await readOption(fd, "typeId", "TYPE", "Tipo de plantilla", true),
     side: oneOf(fd, "side", Object.values(Side)) ?? "BOTH",
     shoeSize,

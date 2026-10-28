@@ -2,6 +2,7 @@ import "server-only";
 import type { OptionKind, WorkOrderStatus } from "@prisma/client";
 import { prisma } from "./prisma";
 import { workOrderStatus } from "./labels";
+import { getCentersForSelect } from "./centers";
 import type { WorkOrderFormOptions } from "@/components/workshop/WorkOrderForm";
 
 /** Listas de Reparaciones (Ajustes → Opciones), en el orden configurado. */
@@ -30,5 +31,6 @@ export async function getWorkOrderFormOptions(): Promise<WorkOrderFormOptions> {
     prisma.settings.findUnique({ where: { id: 1 }, select: { defaultTaxRate: true } }),
     getWorkshopOptions(),
   ]);
-  return { patients, products, technicians, defaultTaxRate: settings?.defaultTaxRate ?? 21, categories: lists.categories, services: lists.services, priorities: lists.priorities };
+  const centers = await getCentersForSelect();
+  return { patients, products, technicians, defaultTaxRate: settings?.defaultTaxRate ?? 21, categories: lists.categories, services: lists.services, priorities: lists.priorities, centers };
 }

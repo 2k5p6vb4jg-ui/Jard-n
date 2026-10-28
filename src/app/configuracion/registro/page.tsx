@@ -25,6 +25,7 @@ const ENTITIES: Record<string, string> = {
   InsoleOrder: "Plantillas (pedido)",
   CatalogOption: "Opciones",
   Photo: "Foto",
+  Center: "Centro",
   CompressionStocking: "Medias",
   ClinicalDocument: "Documento",
   Settings: "Ajustes",

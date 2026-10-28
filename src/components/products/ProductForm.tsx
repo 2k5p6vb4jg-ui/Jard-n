@@ -9,12 +9,14 @@ export function ProductForm({
   product,
   patients,
   categories,
+  centers = [],
   cancelHref,
 }: {
   action: (s: ActionState, fd: FormData) => Promise<ActionState>;
   product?: TrackedProduct;
   patients: { id: string; firstName: string; lastName: string; dni: string | null }[];
   categories: { id: string; label: string; active: boolean }[];
+  centers?: { id: string; label: string }[];
   cancelHref: string;
 }) {
   return (
@@ -31,15 +33,18 @@ export function ProductForm({
         <TextAreaField name="description" label="Descripción / configuración" defaultValue={product?.description} rows={2} placeholder="Medidas de asiento, joystick, talla…" />
       </FormSection>
 
-      <FormSection title="Paciente" icon={User}>
+      <FormSection title="Propietario" icon={User} description="Un cliente, o un centro si el equipo es suyo (p. ej. sillas de una residencia)">
         <SelectField
           name="patientId"
-          label="Asignado a"
-          className="sm:col-span-2 lg:col-span-3"
+          label="Cliente"
+          className="sm:col-span-2"
           placeholder="— En stock / sin asignar —"
           defaultValue={product?.patientId}
           options={patients.map((p) => ({ value: p.id, label: `${p.lastName}, ${p.firstName}${p.dni ? ` · ${p.dni}` : ""}` }))}
         />
+        {centers.length > 0 && (
+          <SelectField name="centerId" label="Centro propietario" placeholder="— Ninguno —" defaultValue={product?.centerId} options={centers.map((c) => ({ value: c.id, label: c.label }))} />
+        )}
         <CheckboxField name="isPublicHealth" label="Financiado por la Seguridad Social" defaultChecked={product?.isPublicHealth} />
       </FormSection>
 

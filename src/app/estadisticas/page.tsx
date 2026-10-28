@@ -1,4 +1,7 @@
-import { BarChart3, CalendarClock, Clock, FileCheck2, Footprints, Info, Users, Wrench } from "lucide-react";
+import Link from "next/link";
+import { prisma } from "@/lib/prisma";
+import { orderActivity, twelveMonthsAgo } from "@/lib/centers";
+import { BarChart3, Building2, CalendarClock, Clock, FileCheck2, Footprints, Info, Users, Wrench } from "lucide-react";
 import { getStats } from "@/lib/stats";
 import { formatEUR } from "@/lib/money";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -21,7 +24,24 @@ function Tile({ label, value, hint, icon: Icon }: { label: string; value: string
 const eur0 = (c: number) => new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(c / 100);
 
 export default async function StatsPage() {
-  const s = await getStats(12);
+  const [s, activity, centers] = await Promise.all([
+    getStats(12),
+    orderActivity({ since: twelveMonthsAgo() }),
+    prisma.center.findMany({ select: { id: true, name: true } }),
+  ]);
+  const billed = activity.filter((r) => r.billed);
+  const sum = (rows: typeof billed) => rows.reduce((t, r) => t + r.totalCents, 0);
+  const origin = [
+    { label: "Particulares", cents: sum(billed.filter((r) => !r.centerId)), tone: "bg-slate-400" },
+    { label: "Pedidos directos de centros", cents: sum(billed.filter((r) => r.centerId && r.link === "ORDERED")), tone: "bg-teal-600" },
+    { label: "A través de centros (derivados y usuarios)", cents: sum(billed.filter((r) => r.centerId && r.link !== "ORDERED")), tone: "bg-gold-500" },
+  ];
+  const originTotal = Math.max(1, origin.reduce((t, o) => t + o.cents, 0));
+  const topCenters = centers
+    .map((c) => ({ ...c, cents: sum(billed.filter((r) => r.centerId === c.id)) }))
+    .filter((c) => c.cents > 0)
+    .sort((a, b) => b.cents - a.cents)
+    .slice(0, 5);
   const delta = s.previous ? s.current.workshopCents + s.current.insoleCents + s.current.stockingCents - (s.previous.workshopCents + s.previous.insoleCents + s.previous.stockingCents) : 0;
   const series = (f: (m: (typeof s.series)[number]) => number, fmt: (v: number) => string) =>
     s.series.map((m) => ({ label: m.label, longLabel: m.longLabel, value: f(m), display: fmt(f(m)) }));
@@ -69,6 +89,42 @@ export default async function StatsPage() {
         <Card>
           <CardHeader title="Medias entregadas" icon={CalendarClock} subtitle="Unidades por mes" />
           <div className="p-5"><BarChart title="Medias entregadas" data={series((m) => m.stockingsDelivered, (v) => `${v}`)} height={120} /></div>
+        </Card>
+        <Card className="lg:col-span-2">
+          <CardHeader title="Origen de la facturación" icon={Building2} subtitle="Reparaciones entregadas y plantillas, últimos 12 meses" />
+          <div className="grid gap-6 p-5 md:grid-cols-2">
+            <div className="space-y-3">
+              <div className="flex h-4 overflow-hidden rounded-full bg-slate-100">
+                {origin.map((o) => <span key={o.label} className={o.tone} style={{ width: `${(o.cents / originTotal) * 100}%` }} />)}
+              </div>
+              <ul className="space-y-2 text-sm">
+                {origin.map((o) => (
+                  <li key={o.label} className="flex items-center gap-2">
+                    <span className={`size-3 shrink-0 rounded-sm ${o.tone}`} />
+                    <span className="flex-1 text-slate-600">{o.label}</span>
+                    <span className="font-medium text-slate-800">{eur0(o.cents)}</span>
+                    <span className="w-12 text-right text-slate-500">{Math.round((o.cents / originTotal) * 100)} %</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-medium text-slate-600">Centros que más facturan</p>
+              {topCenters.length === 0 ? (
+                <p className="text-sm text-slate-500">Aún no hay facturación vinculada a centros.</p>
+              ) : (
+                <ol className="divide-y divide-slate-100 text-sm">
+                  {topCenters.map((c, i) => (
+                    <li key={c.id} className="flex items-center gap-3 py-2">
+                      <span className="w-4 text-slate-400">{i + 1}</span>
+                      <Link href={`/centros/${c.id}`} className="flex-1 truncate font-medium text-teal-700 hover:underline">{c.name}</Link>
+                      <span className="font-medium text-slate-800">{eur0(c.cents)}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          </div>
         </Card>
         <Card className="lg:col-span-2">
           <CardHeader title="Equipos recibidos en el taller" icon={Wrench} subtitle="Por categoría, últimos 12 meses" />

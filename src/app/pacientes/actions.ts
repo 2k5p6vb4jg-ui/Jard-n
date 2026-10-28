@@ -8,7 +8,13 @@ import { audit } from "@/lib/audit";
 import { erasePatient } from "@/lib/gdpr";
 import { type ActionState, bool, date, FormError, handle, normalizeDni, required, str } from "@/lib/forms";
 
-function patientData(fd: FormData) {
+async function centerOf(fd: FormData) {
+  const id = str(fd, "centerId");
+  if (id && !(await prisma.center.findUnique({ where: { id }, select: { id: true } }))) throw new FormError("El centro seleccionado ya no existe.");
+  return id;
+}
+
+async function patientData(fd: FormData) {
   const email = str(fd, "email");
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new FormError("El email no es válido.");
   const gdprConsent = bool(fd, "gdprConsent");
@@ -27,13 +33,14 @@ function patientData(fd: FormData) {
     notes: str(fd, "notes"),
     gdprConsent,
     marketingOptIn: bool(fd, "marketingOptIn"),
+    centerId: await centerOf(fd),
   } satisfies Prisma.PatientUncheckedCreateInput;
 }
 
 export async function createPatient(_prev: ActionState, fd: FormData): Promise<ActionState> {
   let id = "";
   const res = await handle(async () => {
-    const data = patientData(fd);
+    const data = await patientData(fd);
     const p = await prisma.patient.create({ data: { ...data, gdprConsentAt: data.gdprConsent ? new Date() : null } });
     id = p.id;
     await audit("CREATE", "Patient", p.id, `${p.firstName} ${p.lastName}`);
@@ -45,7 +52,7 @@ export async function createPatient(_prev: ActionState, fd: FormData): Promise<A
 
 export async function updatePatient(id: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
   const res = await handle(async () => {
-    const data = patientData(fd);
+    const data = await patientData(fd);
     const before = await prisma.patient.findUniqueOrThrow({ where: { id }, select: { gdprConsent: true, gdprConsentAt: true } });
     await prisma.patient.update({
       where: { id },
