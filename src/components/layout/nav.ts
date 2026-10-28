@@ -1,4 +1,4 @@
-import { BarChart3, Building2, Footprints, LayoutDashboard, Users, Wrench, ScanBarcode, Settings, type LucideIcon } from "lucide-react";
+import { BarChart3, Building2, Footprints, Truck, LayoutDashboard, Users, Wrench, ScanBarcode, Settings, type LucideIcon } from "lucide-react";
 
 /** `mobile`: también en la barra inferior del móvil, que solo tiene sitio para 5 (el resto se abre desde Ajustes). */
 export const NAV: { href: string; label: string; icon: LucideIcon; mobile?: boolean }[] = [
@@ -6,6 +6,7 @@ export const NAV: { href: string; label: string; icon: LucideIcon; mobile?: bool
   { href: "/pacientes", label: "Clientes", icon: Users, mobile: true },
   { href: "/taller", label: "Reparaciones", icon: Wrench, mobile: true },
   { href: "/plantillas", label: "Plantillas", icon: Footprints, mobile: true },
+  { href: "/pedidos", label: "Pedidos", icon: Truck },
   { href: "/centros", label: "Centros", icon: Building2 },
   { href: "/trazabilidad", label: "Trazabilidad", icon: ScanBarcode },
   { href: "/estadisticas", label: "Estadísticas", icon: BarChart3 },

@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { statusTones } from "@/lib/insoleOrders";
+import { LinkedItems } from "@/components/orders/LinkedItems";
+import { linkedItemsSelect } from "@/lib/orders";
 import { getStatusLabels } from "@/lib/workOrderOptions";
 import { formatDate } from "@/lib/dates";
 import { formatEUR } from "@/lib/money";
@@ -89,6 +91,7 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
       documents: { orderBy: { createdAt: "desc" } },
       workOrders: { include: { equipmentCategory: { select: { label: true } } }, orderBy: { receivedAt: "desc" } },
       center: { select: { id: true, name: true } },
+      orderItems: linkedItemsSelect,
       insoleOrders: { include: { type: true, material: true, status: true }, orderBy: { createdAt: "desc" } },
     },
   });
@@ -196,6 +199,8 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
               ))}
             </ul>
           </Card>
+
+          <LinkedItems items={patient.orderItems} newHref={`/pedidos/apuntar?paciente=${patient.id}`} hideWhenEmpty />
 
           {/* Medias */}
           <Card>

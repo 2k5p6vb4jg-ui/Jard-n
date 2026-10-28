@@ -33,6 +33,9 @@ async function reset() {
   await removeFiles([...docs.map((d) => d.storagePath), ...(logo?.logoPath ? [logo.logoPath] : [])]);
   // Orden inverso a las dependencias
   await prisma.auditLog.deleteMany();
+  await prisma.orderItem.deleteMany();
+  await prisma.purchaseOrder.deleteMany();
+  await prisma.supplier.deleteMany();
   await prisma.backupRecord.deleteMany();
   await prisma.productIntervention.deleteMany();
   await prisma.quote.deleteMany();
@@ -591,6 +594,36 @@ async function main() {
     }
     await prisma.maintenanceVisit.create({ data: { proposalId: contrato.id, dueAt, workOrderId } });
   }
+
+  // ── Pedidos a marcas ────────────────────────────────────────────────────
+  const marca = async (name: string, d: Partial<Prisma.SupplierCreateInput> = {}) => prisma.supplier.create({ data: { name, ...d } });
+  const orliman = await marca("Orliman", { phone: "961 500 100", website: "https://www.orliman.com", customerNo: "C-20431", leadTimeDays: 3, contactName: "Raúl (comercial)" });
+  const djo = await marca("DJO", { email: "pedidos.es@djo.example", leadTimeDays: 5, notes: "Aircast y DonJoy. Pedido mínimo 150 €." });
+  const prim = await marca("Prim", { phone: "916 000 200", leadTimeDays: 4 });
+  const sunrise = await marca("Sunrise Medical", { phone: "902 100 300", leadTimeDays: 7, notes: "Recambios de sillas Breezy y Sterling." });
+  await marca("Invacare", { leadTimeDays: 7 });
+  await marca("Juzo", { leadTimeDays: 10, notes: "Medias a medida: 10 días laborables." });
+  const pedirOT = await prisma.workOrder.findFirst({ where: { patientId: antonio.id }, orderBy: { receivedAt: "desc" } });
+  const otGrua = await prisma.workOrder.findFirst({ where: { patientId: francisco.id }, orderBy: { receivedAt: "desc" } });
+  await prisma.orderItem.createMany({
+    data: [
+      { description: "Rodillera articulada Genu-Pro talla M", reference: "OP1180", quantity: 1, supplierId: orliman.id, patientId: lucia.id, neededBy: daysAhead(4) },
+      { description: "Muñequera con férula palmar derecha talla S", quantity: 2, supplierId: orliman.id, notes: "Para stock" },
+      { description: "Walker Aircast SP corto talla L", reference: "01EF-L", quantity: 1, supplierId: djo.id, patientId: javier.id, neededBy: daysAhead(2) },
+      { description: "Cojín antiescaras viscoelástico 42×42", quantity: 1, supplierId: null, patientId: mariaJose.id, notes: "Mirar si lo tiene Sunrise o Prim" },
+    ],
+  });
+  const po = await prisma.purchaseOrder.create({
+    data: { number: `PED-${now.getFullYear()}-0001`, supplierId: sunrise.id, orderedAt: daysAgo(6), via: "Teléfono", supplierRef: "SM-889120", expectedAt: daysAgo(1) },
+  });
+  await prisma.orderItem.createMany({
+    data: [
+      { description: "Rueda trasera neumática 13\" Sterling", quantity: 1, supplierId: sunrise.id, workOrderId: pedirOT?.id, patientId: antonio.id, status: "ORDERED", orderedAt: daysAgo(6), purchaseOrderId: po.id },
+      { description: "Zapata de freno electromagnético", quantity: 1, supplierId: sunrise.id, workOrderId: pedirOT?.id, patientId: antonio.id, status: "RECEIVED", orderedAt: daysAgo(6), receivedAt: daysAgo(1), purchaseOrderId: po.id },
+    ],
+  });
+  if (otGrua) await prisma.orderItem.create({ data: { description: "Actuador lineal grúa Birdie", reference: "1570339", quantity: 1, supplierId: (await prisma.supplier.findFirstOrThrow({ where: { name: "Invacare" } })).id, workOrderId: otGrua.id, patientId: francisco.id, centerId: naranjos.id, neededBy: daysAhead(1) } });
+  await prisma.orderItem.create({ data: { description: "Plantilla base EVA 3 mm (plancha)", quantity: 4, supplierId: prim.id, notes: "Stock de taller" } });
 
   // ── Histórico de 12 meses (para que las estadísticas tengan datos) ──────
   // Pseudoaleatorio con semilla fija: el resultado es siempre el mismo

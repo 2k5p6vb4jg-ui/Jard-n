@@ -13,12 +13,14 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { SubmitButton } from "@/components/ui/Form";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { PhotoGallery } from "@/components/ui/PhotoGallery";
+import { LinkedItems } from "@/components/orders/LinkedItems";
+import { linkedItemsSelect } from "@/lib/orders";
 import { deleteInsoleOrder, setInsoleOrderStatus, togglePaid } from "../actions";
 
 export default async function InsoleOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [order, { statuses }] = await Promise.all([
-    prisma.insoleOrder.findUnique({ where: { id }, include: { patient: true, center: { select: { id: true, name: true } }, type: true, material: true, status: true, photos: { orderBy: { createdAt: "asc" } } } }),
+    prisma.insoleOrder.findUnique({ where: { id }, include: { patient: true, center: { select: { id: true, name: true } }, type: true, material: true, status: true, photos: { orderBy: { createdAt: "asc" } }, orderItems: linkedItemsSelect } }),
     getInsoleOptions(),
   ]);
   if (!order) notFound();
@@ -106,6 +108,8 @@ export default async function InsoleOrderPage({ params }: { params: Promise<{ id
               <LinkButton href={`/plantillas/nueva?paciente=${p.id}`} variant="secondary" icon={Plus} className="mt-2 w-full">Otras plantillas para este cliente</LinkButton>
             </div>
           </Card>
+
+          <LinkedItems items={order.orderItems} newHref={`/pedidos/apuntar?plantilla=${order.id}`} title="Material pedido" />
 
           <Card>
             <CardHeader title="Cobro" icon={CircleDollarSign} />

@@ -45,6 +45,8 @@ import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { InlineForm } from "@/components/ui/InlineForm";
 import { Elapsed } from "@/components/workshop/Elapsed";
 import { PhotoGallery } from "@/components/ui/PhotoGallery";
+import { LinkedItems } from "@/components/orders/LinkedItems";
+import { linkedItemsSelect } from "@/lib/orders";
 import { addManualTime, addPart, changeStatus, deletePart, deleteTimeEntry, startTimer, stopTimer } from "../actions";
 import { createQuote, setQuoteStatus } from "../quotes";
 import { effectiveQuoteStatus } from "@/lib/quotes";
@@ -69,6 +71,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
         statusHistory: { orderBy: { changedAt: "asc" } },
         quotes: { orderBy: { issuedAt: "desc" } },
         photos: { orderBy: { createdAt: "asc" } },
+        orderItems: linkedItemsSelect,
       },
     }),
     prisma.settings.findUnique({ where: { id: 1 } }),
@@ -375,6 +378,9 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
         </div>
 
         <div className="space-y-6">
+          {/* ── Piezas pedidas a marcas ────────────────────────────────── */}
+          <LinkedItems items={order.orderItems} newHref={`/pedidos/apuntar?reparacion=${order.id}`} title="Piezas pedidas" />
+
           {/* ── Costes ─────────────────────────────────────────────────── */}
           <Card>
             <CardHeader title="Desglose de costes" icon={Receipt} />

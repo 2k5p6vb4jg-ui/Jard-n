@@ -207,3 +207,14 @@ export const proposalStatus: Record<import("@prisma/client").QuoteStatus, { labe
   REJECTED: { label: "Rechazada", tone: "rose" },
   EXPIRED: { label: "Caducada", tone: "amber" },
 };
+
+export const orderItemStatus: Record<import("@prisma/client").OrderItemStatus, { label: string; tone: Tone }> = {
+  PENDING: { label: "Por pedir", tone: "gold" },
+  ORDERED: { label: "Pedido", tone: "sky" },
+  RECEIVED: { label: "Recibido", tone: "teal" },
+  DELIVERED: { label: "Entregado", tone: "emerald" },
+  CANCELLED: { label: "Anulado", tone: "slate" },
+};
+
+/** Formas habituales de hacer un pedido a una marca */
+export const ORDER_VIAS = ["Web / portal", "Email", "Teléfono", "Comercial", "WhatsApp"];

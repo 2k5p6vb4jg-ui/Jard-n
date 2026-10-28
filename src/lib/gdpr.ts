@@ -37,6 +37,7 @@ export async function collectPatientData(patientId: string) {
       },
       insoleOrders: { include: { type: true, material: true, status: true, photos: true }, orderBy: { createdAt: "asc" } },
       center: { select: { name: true } },
+      orderItems: { select: { description: true, quantity: true, status: true, createdAt: true, supplier: { select: { name: true } } } },
       products: { include: { category: true, interventions: { orderBy: { date: "asc" } } } },
     },
   });

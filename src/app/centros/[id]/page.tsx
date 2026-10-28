@@ -37,6 +37,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SubmitButton } from "@/components/ui/Form";
 import { InlineForm } from "@/components/ui/InlineForm";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
+import { LinkedItems } from "@/components/orders/LinkedItems";
+import { linkedItemsSelect } from "@/lib/orders";
 import { addContact, deleteCenter, deleteContact, linkLegacyOrders } from "../actions";
 
 function ActivityList({ rows, empty, showLink }: { rows: ActivityRow[]; empty: string; showLink?: boolean }) {
@@ -73,6 +75,7 @@ export default async function CenterPage({ params }: { params: Promise<{ id: str
         type: true,
         status: true,
         contacts: { orderBy: { createdAt: "asc" } },
+        orderItems: linkedItemsSelect,
         patients: { include: { _count: { select: { workOrders: true, insoleOrders: true } } }, orderBy: [{ lastName: "asc" }, { firstName: "asc" }] },
       },
     }),
@@ -230,6 +233,8 @@ export default async function CenterPage({ params }: { params: Promise<{ id: str
             <CardHeader title="A través del centro" icon={Handshake} subtitle="Clientes derivados por el centro o que acuden a él" />
             <ActivityList rows={through} empty="Todavía no hay pedidos de clientes del centro." showLink />
           </Card>
+
+          <LinkedItems items={center.orderItems} newHref={`/pedidos/apuntar?centro=${id}`} hideWhenEmpty />
 
           <Card>
             <CardHeader title="Equipos" icon={Package} subtitle="Del centro y de sus usuarios: base para ofrecer mantenimiento" />

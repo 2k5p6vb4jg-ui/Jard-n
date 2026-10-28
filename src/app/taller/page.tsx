@@ -16,6 +16,13 @@ import { Cell, chipClass, Row, RowLink, Table } from "@/components/ui/Table";
 
 export const metadata = { title: "Reparaciones" };
 
+/** Situación de las piezas pedidas a marcas para la orden */
+function PartsBadge({ items }: { items: { status: string }[] }) {
+  if (items.some((i) => i.status === "PENDING" || i.status === "ORDERED")) return <Badge tone="sky">Esperando pieza</Badge>;
+  if (items.some((i) => i.status === "RECEIVED")) return <Badge tone="teal">Pieza recibida</Badge>;
+  return null;
+}
+
 export default async function WorkshopPage({ searchParams }: { searchParams: Promise<{ estado?: string; centro?: string }> }) {
   const { estado, centro } = await searchParams;
   const status = estado && estado in workOrderStatus ? (estado as WorkOrderStatus) : undefined;
@@ -32,6 +39,7 @@ export default async function WorkshopPage({ searchParams }: { searchParams: Pro
       equipmentCategory: { select: { label: true } },
       serviceType: { select: { label: true } },
       priority: { select: { label: true, key: true } },
+      orderItems: { where: { status: { in: ["PENDING", "ORDERED", "RECEIVED"] } }, select: { status: true } },
     },
     orderBy: [{ receivedAt: "desc" }],
   });
@@ -77,6 +85,7 @@ export default async function WorkshopPage({ searchParams }: { searchParams: Pro
                         {o.serviceType.label}
                         {o.priority.key !== "NORMAL" && <Badge tone={priorityTone(o.priority.key)}>{o.priority.label}</Badge>}
                         {o.underWarranty && <Badge tone="gold">Garantía</Badge>}
+                        <PartsBadge items={o.orderItems} />
                       </p>
                     </Cell>
                     <Cell className="text-slate-700">{who(o)}</Cell>
@@ -102,6 +111,7 @@ export default async function WorkshopPage({ searchParams }: { searchParams: Pro
                       <span className="font-mono">{o.code}</span> · Entrada {formatDate(o.receivedAt)}
                       {o.priority.key !== "NORMAL" && <Badge tone={priorityTone(o.priority.key)}>{o.priority.label}</Badge>}
                       {o.underWarranty && <Badge tone="gold">Garantía</Badge>}
+                      <PartsBadge items={o.orderItems} />
                     </p>
                   </Link>
                 </li>

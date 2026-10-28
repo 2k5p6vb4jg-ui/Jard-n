@@ -27,6 +27,8 @@ const ENTITIES: Record<string, string> = {
   Photo: "Foto",
   Center: "Centro",
   CenterProposal: "Propuesta",
+  OrderItem: "Artículo a pedir",
+  PurchaseOrder: "Pedido a marca",
   CompressionStocking: "Medias",
   ClinicalDocument: "Documento",
   Settings: "Ajustes",

@@ -80,6 +80,7 @@ src/
     taller/              Reparaciones: órdenes de trabajo por estado, detalle con costes
     plantillas/          Plantillas: listado con buscador, alta/edición, estado y cobro
     centros/             Centros (B2B): listado, ficha con historial, equipos, clientes y contactos
+    pedidos/             Pedidos a marcas: por pedir, en camino, por entregar, historial y marcas
     configuracion/opciones/    Ajustes → Opciones: listas editables de Reparaciones y Plantillas
     trazabilidad/        Productos por nº de serie e histórico de intervenciones
     configuracion/       Datos del negocio y copia de seguridad
@@ -138,6 +139,12 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
   prevista, estado, precio, pagado y observaciones; cambio de estado y de pago con un toque, aviso de «Retrasada».
   Tipos, materiales y estados se editan en **Ajustes → Opciones → Plantillas** (añadir, renombrar, ordenar,
   desactivar; un estado «final» saca el pedido de «En curso»).
+- **Pedidos a marcas** (Orliman, DJO, Prim, Sunrise…): se apunta qué hay que pedir, cuánto, para cuándo y **para quién**
+  (cliente, centro, reparación, plantillas o stock). «Por pedir» lo agrupa por marca y «Marcar como pedido» crea el pedido
+  (`PED-AAAA-NNNN`) con vía, nº de la marca y llegada prevista (según el plazo habitual de la marca). Recepción artículo a
+  artículo o de golpe, «Por entregar» para lo recibido que espera su destinatario y texto del pedido para copiar en un
+  email o WhatsApp. Desde cada reparación, «Pedir» apunta la pieza enlazada; el listado de Reparaciones muestra
+  «Esperando pieza» y el Panel resume lo pendiente y los pedidos con retraso.
 - **Centros (B2B):** residencias, centros de día y otros centros, con tipo y situación comercial editables (posible
   cliente, activo, inactivo), plazas, condiciones pactadas, notas y personas de contacto. Cada reparación o plantillas
   puede ir enlazada a un centro como **pedido del centro**, **derivado por el centro** o **usuario del centro** (si el

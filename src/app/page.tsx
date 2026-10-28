@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { AlertTriangle, ArrowRight, BellRing, CalendarCheck, ClipboardPlus, Footprints, Plus, UserPlus, Wrench } from "lucide-react";
+import { AlertTriangle, ArrowRight, BellRing, CalendarCheck, ClipboardPlus, Truck, Footprints, Plus, UserPlus, Wrench } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getRenewalAlerts } from "@/lib/renewals";
 import { formatDate } from "@/lib/dates";
@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { RenewalList } from "@/components/dashboard/RenewalList";
 import { SubmitButton } from "@/components/ui/Form";
 import { getDueVisits } from "@/lib/contracts";
+import { orderCounts } from "@/lib/orders";
 import { createVisitOrder } from "@/app/centros/propuestas";
 
 export const dynamic = "force-dynamic";
@@ -43,7 +44,7 @@ function Kpi({ href, label, value, hint, icon: Icon, tone = "plain" }: { href: s
 
 export default async function DashboardPage() {
   const today = new Date(new Date().setHours(0, 0, 0, 0));
-  const [alerts, byStatus, activeOrders, st, insoleOpts, openInsoles, lateOrders, dueVisits] = await Promise.all([
+  const [alerts, byStatus, activeOrders, st, insoleOpts, openInsoles, lateOrders, dueVisits, orders] = await Promise.all([
     getRenewalAlerts(),
     prisma.workOrder.groupBy({ by: ["status"], _count: { _all: true } }),
     prisma.workOrder.findMany({
@@ -65,6 +66,7 @@ export default async function DashboardPage() {
     }),
     prisma.workOrder.count({ where: { status: { notIn: ["DELIVERED", "CANCELLED"] }, promisedAt: { lt: today } } }),
     getDueVisits(14),
+    orderCounts(),
   ]);
 
   const count = (s: string) => byStatus.find((b) => b.status === s)?._count._all ?? 0;
@@ -227,6 +229,24 @@ export default async function DashboardPage() {
                   );
                 })}
               </ul>
+            </Card>
+          )}
+          {orders.pending + orders.ordered + orders.toDeliver > 0 && (
+            <Card>
+              <CardHeader title="Pedidos a marcas" icon={Truck} action={<Link href="/pedidos" className="inline-flex items-center gap-1 text-sm font-medium text-teal-700 hover:text-teal-800">Ver <ArrowRight className="size-4" /></Link>} />
+              <div className="grid grid-cols-3 divide-x divide-slate-100">
+                {[
+                  { href: "/pedidos", label: "Por pedir", value: orders.pending, hint: null },
+                  { href: "/pedidos?vista=encamino", label: "En camino", value: orders.ordered, hint: orders.late ? `${orders.late} con retraso` : null },
+                  { href: "/pedidos?vista=porentregar", label: "Por entregar", value: orders.toDeliver, hint: null },
+                ].map((k) => (
+                  <Link key={k.href} href={k.href} className="p-4 hover:bg-slate-50">
+                    <p className="text-xs font-medium text-slate-500">{k.label}</p>
+                    <p className="text-2xl font-semibold text-slate-900">{k.value}</p>
+                    {k.hint && <p className="text-xs font-medium text-rose-600">{k.hint}</p>}
+                  </Link>
+                ))}
+              </div>
             </Card>
           )}
           <Card className="h-fit">
