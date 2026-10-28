@@ -9,3 +9,8 @@ export async function ensureSettings() {
   await prisma.settings.upsert({ where: { id: 1 }, update: {}, create: { id: 1, businessName: "Jardón Ortopedia" } });
   ensured = true;
 }
+
+/** Nombre comercial (para mensajes y documentos). */
+export async function businessName() {
+  return (await prisma.settings.findUnique({ where: { id: 1 }, select: { businessName: true } }))?.businessName ?? "Jardón Ortopedia";
+}

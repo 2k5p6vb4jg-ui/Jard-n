@@ -6,7 +6,7 @@ import type { Tone } from "./labels";
 /** Datos de «para quién» que se cargan con cada artículo. */
 export const recipientInclude = {
   supplier: { select: { id: true, name: true } },
-  patient: { select: { id: true, firstName: true, lastName: true } },
+  patient: { select: { id: true, firstName: true, lastName: true, phone: true } },
   center: { select: { id: true, name: true } },
   workOrder: { select: { id: true, code: true } },
   insoleOrder: { select: { id: true, code: true } },

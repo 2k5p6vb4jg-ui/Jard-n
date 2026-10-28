@@ -10,6 +10,9 @@ export interface RenewalAlert {
   patientId: string;
   patientName: string;
   phone: string | null;
+  firstName: string;
+  /** Aceptó recibir avisos (recordatorios de renovación) */
+  acceptsNotices: boolean;
   detail: string;
   deliveredAt: Date | null;
   nextReviewAt: Date;
@@ -36,7 +39,7 @@ export async function getRenewalAlerts(now = new Date()): Promise<RenewalAlert[]
     OR: [{ renewalSnoozedUntil: null }, { renewalSnoozedUntil: { lte: now } }],
     patient: { archivedAt: null },
   };
-  const patientSelect = { select: { id: true, firstName: true, lastName: true, phone: true } };
+  const patientSelect = { select: { id: true, firstName: true, lastName: true, phone: true, marketingOptIn: true } };
 
   const [insoles, stockings] = await Promise.all([
     prisma.insolePrescription.findMany({ where, include: { patient: patientSelect } }),
@@ -45,7 +48,7 @@ export async function getRenewalAlerts(now = new Date()): Promise<RenewalAlert[]
 
   const toAlert = (
     kind: RenewalKind,
-    r: { id: string; deliveredAt: Date | null; nextReviewAt: Date | null; renewalStatus: string; renewalUpdatedAt: Date | null; patient: { id: string; firstName: string; lastName: string; phone: string | null } },
+    r: { id: string; deliveredAt: Date | null; nextReviewAt: Date | null; renewalStatus: string; renewalUpdatedAt: Date | null; patient: { id: string; firstName: string; lastName: string; phone: string | null; marketingOptIn: boolean } },
     detail: string,
   ): RenewalAlert => {
     const daysLeft = daysBetween(now, r.nextReviewAt!);
@@ -55,6 +58,8 @@ export async function getRenewalAlerts(now = new Date()): Promise<RenewalAlert[]
       patientId: r.patient.id,
       patientName: `${r.patient.firstName} ${r.patient.lastName}`,
       phone: r.patient.phone,
+      firstName: r.patient.firstName,
+      acceptsNotices: r.patient.marketingOptIn,
       detail,
       deliveredAt: r.deliveredAt,
       nextReviewAt: r.nextReviewAt!,

@@ -67,7 +67,7 @@ export default async function DashboardPage() {
     prisma.workOrder.count({ where: { status: { notIn: ["DELIVERED", "CANCELLED"] }, promisedAt: { lt: today } } }),
     getDueVisits(14),
     orderCounts(),
-    prisma.settings.findUnique({ where: { id: 1 }, select: { autoBackup: true, lastAutoBackupAt: true, backupMirrorDir: true, lastMirrorError: true } }),
+    prisma.settings.findUnique({ where: { id: 1 }, select: { businessName: true, autoBackup: true, lastAutoBackupAt: true, backupMirrorDir: true, lastMirrorError: true } }),
   ]);
 
   const count = (s: string) => byStatus.find((b) => b.status === s)?._count._all ?? 0;
@@ -270,7 +270,7 @@ export default async function DashboardPage() {
               icon={BellRing}
               action={overdue > 0 ? <Badge tone="rose"><AlertTriangle className="size-3.5" />{overdue} vencidos</Badge> : undefined}
             />
-            <RenewalList alerts={alerts} />
+            <RenewalList alerts={alerts} business={backup?.businessName ?? ""} />
           </Card>
         </div>
       </div>

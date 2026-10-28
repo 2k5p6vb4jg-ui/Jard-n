@@ -131,6 +131,9 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
 
 ## Qué se puede hacer ya
 
+- **Avisos por WhatsApp** con el mensaje ya escrito (abre WhatsApp en el móvil o WhatsApp Web; lo envía la persona):
+  reparación terminada o con presupuesto, plantillas listas, pedido recibido, renovación (solo a quien aceptó avisos) y
+  contactos de centros. Solo aparece con teléfonos móviles.
 - **Importar clientes** (Clientes → Importar): desde un CSV del programa anterior o de Excel («Guardar como → CSV»).
   Detecta separador y codificación (tildes y ñ de Excel), reconoce las columnas por su título (se pueden cambiar),
   muestra una vista previa y se salta los que ya existen (mismo DNI, o mismo teléfono y apellido), así que se puede

@@ -7,11 +7,13 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SubmitButton } from "@/components/ui/Form";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
+import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
+import { messages } from "@/lib/whatsapp";
 
 const small = "min-h-11 px-3 text-sm";
 
 /** Avisos de renovación con acciones rápidas, pensadas para usar con el dedo en la tablet. */
-export function RenewalList({ alerts }: { alerts: RenewalAlert[] }) {
+export function RenewalList({ alerts, business }: { alerts: RenewalAlert[]; business: string }) {
   if (alerts.length === 0) {
     return <EmptyState icon={BellRing} title="Sin renovaciones pendientes" text="Aquí aparecerán los pacientes cuya prescripción vence en los próximos días." />;
   }
@@ -48,6 +50,8 @@ export function RenewalList({ alerts }: { alerts: RenewalAlert[] }) {
                   {a.phone}
                 </a>
               )}
+              {/* Solo a quien aceptó recibir avisos (consentimiento de la ficha) */}
+              {a.acceptsNotices && <WhatsAppButton phone={a.phone} text={messages.renewal(a.firstName, a.kind === "INSOLE" ? "plantillas" : "medias de compresión", business)} />}
               {!contacted && (
                 <form action={act(a, "CONTACTED")}>
                   <SubmitButton icon={<PhoneCall className="size-4" />} variant="secondary" className={small}>Llamado</SubmitButton>

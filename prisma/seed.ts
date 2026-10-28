@@ -114,7 +114,7 @@ async function main() {
   const p = await Promise.all(
     patientsData.map((d) =>
       prisma.patient.create({
-        data: { ...d, address: "Dirección de prueba, 1", gdprConsent: true, gdprConsentAt: daysAgo(400) },
+        data: { ...d, address: "Dirección de prueba, 1", gdprConsent: true, gdprConsentAt: daysAgo(400), marketingOptIn: d.firstName !== "Antonio" },
       }),
     ),
   );

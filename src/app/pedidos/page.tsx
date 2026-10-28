@@ -15,6 +15,9 @@ import { InlineForm } from "@/components/ui/InlineForm";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { chipClass } from "@/components/ui/Table";
 import { createPurchaseOrder, deleteItem, setItemStatus } from "./actions";
+import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
+import { messages } from "@/lib/whatsapp";
+import { businessName } from "@/lib/settings";
 
 export const metadata = { title: "Pedidos" };
 
@@ -35,6 +38,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const { vista } = await searchParams;
   const view: View = vista && vista in VIEWS ? (vista as View) : "porpedir";
   const today = new Date(new Date().setHours(0, 0, 0, 0));
+  const business = await businessName();
 
   const [pending, openOrders, toDeliver, history, counts] = await Promise.all([
     view === "porpedir" ? prisma.orderItem.findMany({ where: { status: "PENDING" }, include: recipientInclude, orderBy: [{ neededBy: "asc" }, { createdAt: "asc" }] }) : [],
@@ -212,6 +216,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                 <li key={i.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
                   {itemLine(i)}
                   <span className="text-xs text-slate-500">Recibido el {formatDate(i.receivedAt)}</span>
+                  <WhatsAppButton phone={i.patient?.phone} label="Avisar: ha llegado" text={messages.orderArrived(i.patient?.firstName ?? null, i.description, business)} />
                   <form action={setItemStatus.bind(null, i.id, "DELIVERED")}>
                     <SubmitButton icon={<CheckCheck className="size-4" />} className="min-h-11 px-3 text-sm lg:min-h-10">Entregado</SubmitButton>
                   </form>

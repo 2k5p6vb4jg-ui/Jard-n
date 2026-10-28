@@ -38,6 +38,9 @@ import { SubmitButton } from "@/components/ui/Form";
 import { InlineForm } from "@/components/ui/InlineForm";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { LinkedItems } from "@/components/orders/LinkedItems";
+import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
+import { messages } from "@/lib/whatsapp";
+import { businessName } from "@/lib/settings";
 import { linkedItemsSelect } from "@/lib/orders";
 import { addContact, deleteCenter, deleteContact, linkLegacyOrders } from "../actions";
 
@@ -94,6 +97,7 @@ export default async function CenterPage({ params }: { params: Promise<{ id: str
   ]);
   if (!center) notFound();
   const opportunities = await centerOpportunities(id, activity);
+  const business = await businessName();
 
   const since = twelveMonthsAgo();
   const year = revenueSplit(activity.filter((r) => r.date >= since));
@@ -295,6 +299,7 @@ export default async function CenterPage({ params }: { params: Promise<{ id: str
                       {c.email && <a href={`mailto:${c.email}`} className="break-all hover:underline">{c.email}</a>}
                     </p>
                   </div>
+                  <WhatsAppButton phone={c.phone} compact text={messages.generic(c.name, business)} />
                   <form action={deleteContact.bind(null, id, c.id)}>
                     <ConfirmButton message={`¿Quitar a ${c.name}?`} ariaLabel={`Quitar a ${c.name}`} icon={<Trash2 className="size-4" />} className="size-10 text-slate-400 hover:bg-rose-50 hover:text-rose-600" />
                   </form>

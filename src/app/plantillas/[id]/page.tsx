@@ -13,6 +13,9 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { SubmitButton } from "@/components/ui/Form";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { PhotoGallery } from "@/components/ui/PhotoGallery";
+import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
+import { messages } from "@/lib/whatsapp";
+import { businessName } from "@/lib/settings";
 import { LinkedItems } from "@/components/orders/LinkedItems";
 import { linkedItemsSelect } from "@/lib/orders";
 import { deleteInsoleOrder, setInsoleOrderStatus, togglePaid } from "../actions";
@@ -25,6 +28,9 @@ export default async function InsoleOrderPage({ params }: { params: Promise<{ id
   ]);
   if (!order) notFound();
   const tones = statusTones(statuses);
+  const business = await businessName();
+  // «Listas para recoger»: el último estado en curso de la lista configurada
+  const ready = order.statusId === statuses.filter((s) => !s.isFinal).at(-1)?.id;
   const p = order.patient;
 
   const item = (label: string, value: React.ReactNode) => (
@@ -100,6 +106,11 @@ export default async function InsoleOrderPage({ params }: { params: Promise<{ id
                   <a href={`tel:${p.phone.replace(/\s/g, "")}`}>{p.phone}</a>
                 </p>
               )}
+              <WhatsAppButton
+                phone={p.phone}
+                label={ready ? "Avisar: están listas" : "WhatsApp"}
+                text={ready ? messages.insoleReady(p.firstName, business) : messages.insoleGeneric(p.firstName, business)}
+              />
               {order.center && order.centerLink && (
             <Link href={`/centros/${order.center.id}`} className="inline-flex max-w-full">
               <Badge tone={centerLink[order.centerLink].tone}><Building2 className="size-3.5 shrink-0" /><span className="truncate">{order.center.name} · {centerLink[order.centerLink].short}</span></Badge>

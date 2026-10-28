@@ -20,6 +20,9 @@ import {
 import { prisma } from "@/lib/prisma";
 import { statusTones } from "@/lib/insoleOrders";
 import { LinkedItems } from "@/components/orders/LinkedItems";
+import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
+import { messages } from "@/lib/whatsapp";
+import { businessName } from "@/lib/settings";
 import { linkedItemsSelect } from "@/lib/orders";
 import { getStatusLabels } from "@/lib/workOrderOptions";
 import { formatDate } from "@/lib/dates";
@@ -97,6 +100,7 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
   });
   if (!patient) notFound();
   const st = await getStatusLabels();
+  const business = await businessName();
   const tones = statusTones(await prisma.catalogOption.findMany({ where: { kind: "STATUS" }, orderBy: [{ sortOrder: "asc" }, { label: "asc" }] }));
 
   const prescriptionLinks = [
@@ -141,7 +145,13 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
         <Card>
           <CardHeader title="Ficha general" icon={Stethoscope} />
           <dl className="space-y-3 px-5 py-4 text-slate-700">
-            {patient.phone && <p className="flex items-center gap-3"><Phone className="size-4 text-slate-400" /><a href={`tel:${patient.phone.replace(/\s/g, "")}`}>{patient.phone}</a></p>}
+            {patient.phone && (
+              <p className="flex items-center gap-3">
+                <Phone className="size-4 text-slate-400" />
+                <a href={`tel:${patient.phone.replace(/\s/g, "")}`}>{patient.phone}</a>
+                <WhatsAppButton phone={patient.phone} compact text={messages.generic(patient.firstName, business)} className="ml-auto" />
+              </p>
+            )}
             {patient.email && <p className="flex items-center gap-3"><Mail className="size-4 text-slate-400" />{patient.email}</p>}
             {(patient.address || patient.city) && <p className="flex items-center gap-3"><MapPin className="size-4 text-slate-400" />{[patient.address, patient.city].filter(Boolean).join(", ")}</p>}
             {patient.birthDate && <p className="flex items-center gap-3"><CalendarClock className="size-4 text-slate-400" />Nacimiento: {formatDate(patient.birthDate)}</p>}

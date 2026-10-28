@@ -45,6 +45,8 @@ import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { InlineForm } from "@/components/ui/InlineForm";
 import { Elapsed } from "@/components/workshop/Elapsed";
 import { PhotoGallery } from "@/components/ui/PhotoGallery";
+import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
+import { messages } from "@/lib/whatsapp";
 import { LinkedItems } from "@/components/orders/LinkedItems";
 import { linkedItemsSelect } from "@/lib/orders";
 import { addManualTime, addPart, changeStatus, deletePart, deleteTimeEntry, startTimer, stopTimer } from "../actions";
@@ -142,6 +144,18 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
             <p className="mt-1 truncate font-semibold text-slate-900">{order.customerName}</p>
           )}
           {(order.patient?.phone ?? order.customerPhone) && <p className="truncate text-sm text-slate-500">{order.patient?.phone ?? order.customerPhone}</p>}
+          <WhatsAppButton
+            className="mt-2"
+            phone={order.patient?.phone ?? order.customerPhone}
+            label={order.status === "READY" ? "Avisar: está lista" : order.status === "QUOTED" ? "Avisar: presupuesto" : "WhatsApp"}
+            text={
+              order.status === "READY"
+                ? messages.repairReady(order.patient?.firstName ?? null, order.equipmentCategory.label, settings?.businessName ?? "")
+                : order.status === "QUOTED"
+                  ? messages.repairQuote(order.patient?.firstName ?? null, order.equipmentCategory.label, settings?.businessName ?? "")
+                  : messages.repairGeneric(order.patient?.firstName ?? null, order.code, settings?.businessName ?? "")
+            }
+          />
           {order.center && order.centerLink && (
             <Link href={`/centros/${order.center.id}`} className="mt-1 inline-flex max-w-full">
               <Badge tone={centerLink[order.centerLink].tone}><Building2 className="size-3.5 shrink-0" /><span className="truncate">{order.center.name} · {centerLink[order.centerLink].short}</span></Badge>
