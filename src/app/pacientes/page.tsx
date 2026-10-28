@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, Search, ShieldCheck, UserPlus, Users } from "lucide-react";
+import { ChevronRight, FileUp, Search, ShieldCheck, UserPlus, Users } from "lucide-react";
 import { searchPatients } from "@/lib/search";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -38,7 +38,12 @@ export default async function PatientsPage({ searchParams }: { searchParams: Pro
       <PageHeader
         title="Clientes"
         description={`${patients.length} fichas`}
-        actions={<LinkButton href="/pacientes/nuevo" icon={UserPlus}>Nuevo cliente</LinkButton>}
+        actions={
+          <>
+            <LinkButton href="/pacientes/importar" variant="secondary" icon={FileUp}>Importar</LinkButton>
+            <LinkButton href="/pacientes/nuevo" icon={UserPlus}>Nuevo cliente</LinkButton>
+          </>
+        }
       />
       {eliminado && (
         <p role="status" className="mb-4 flex items-center gap-2 rounded-xl bg-emerald-50 p-4 text-emerald-800">

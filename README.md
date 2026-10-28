@@ -131,6 +131,10 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
 
 ## Qué se puede hacer ya
 
+- **Importar clientes** (Clientes → Importar): desde un CSV del programa anterior o de Excel («Guardar como → CSV»).
+  Detecta separador y codificación (tildes y ñ de Excel), reconoce las columnas por su título (se pueden cambiar),
+  muestra una vista previa y se salta los que ya existen (mismo DNI, o mismo teléfono y apellido), así que se puede
+  repetir sin duplicar. Los datos dudosos (DNI o fecha no válidos) se guardan en Observaciones.
 - **Pacientes:** alta y edición (DNI/NIE con letra verificada, consentimiento RGPD con fecha).
 - **Prescripción clínica de plantillas y medias:** alta y edición completas. Al marcarlas como *Entregada* se programa la revisión
   (12 / 6 meses) y se cierran los avisos de prescripciones anteriores del mismo tipo.
