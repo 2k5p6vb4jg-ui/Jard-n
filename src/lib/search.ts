@@ -33,7 +33,7 @@ export async function searchPatients(term: string, limit = 200) {
 export async function globalSearch(term: string) {
   if (normalize(term).length < 2) return null;
   const m = matcher(term);
-  const [patients, orders, products, quotes, insoleOrders, centers] = await Promise.all([
+  const [patients, orders, products, quotes, insoleOrders, centers, proposals] = await Promise.all([
     searchPatients(term, 20),
     prisma.workOrder.findMany({
       select: {
@@ -56,6 +56,7 @@ export async function globalSearch(term: string) {
       orderBy: { createdAt: "desc" },
     }),
     prisma.center.findMany({ select: { id: true, name: true, city: true, taxId: true, phone: true, type: { select: { label: true } } }, orderBy: { name: "asc" } }),
+    prisma.centerProposal.findMany({ select: { id: true, number: true, title: true, centerId: true, center: { select: { name: true } } }, orderBy: { issuedAt: "desc" } }),
   ]);
   return {
     patients,
@@ -65,6 +66,7 @@ export async function globalSearch(term: string) {
     products: products.filter((p) => m(p.serialNumber, p.lotNumber, p.brand, p.model, p.patient?.firstName, p.patient?.lastName)).slice(0, 20),
     quotes: quotes.filter((q) => m(q.number, q.workOrder.code)).slice(0, 20),
     centers: centers.filter((c) => m(c.name, c.city, c.taxId, c.phone)).slice(0, 20),
+    proposals: proposals.filter((p) => m(p.number, p.title, p.center.name)).slice(0, 20),
     insoleOrders: insoleOrders
       .filter((o) => m(o.code, o.patient.firstName, o.patient.lastName, o.patient.phone, o.type.label, o.material?.label))
       .slice(0, 20),

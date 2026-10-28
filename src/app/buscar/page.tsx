@@ -19,7 +19,7 @@ const row = "flex min-h-14 items-center gap-3 px-5 py-3 hover:bg-slate-50";
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q = "" } = await searchParams;
   const r = await globalSearch(q);
-  const total = r ? r.centers.length + r.patients.length + r.orders.length + r.insoleOrders.length + r.products.length + r.quotes.length : 0;
+  const total = r ? r.proposals.length + r.centers.length + r.patients.length + r.orders.length + r.insoleOrders.length + r.products.length + r.quotes.length : 0;
   const st = await getStatusLabels();
   const tones = r?.insoleOrders.length ? statusTones((await getInsoleOptions()).statuses) : {};
 
@@ -47,6 +47,24 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium text-slate-800">{c.name}</p>
                         <p className="truncate text-sm text-slate-500">{[c.type.label, c.city].filter(Boolean).join(" · ")}</p>
+                      </div>
+                      <ChevronRight className="size-5 text-slate-300" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+          {r.proposals.length > 0 && (
+            <Card>
+              <CardHeader title="Propuestas a centros" icon={FileText} subtitle={`${r.proposals.length}`} />
+              <ul className="divide-y divide-slate-100">
+                {r.proposals.map((p) => (
+                  <li key={p.id}>
+                    <Link href={`/centros/${p.centerId}/propuestas/${p.id}`} className={row}>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-slate-800">{p.title}</p>
+                        <p className="truncate text-sm text-slate-500"><span className="font-mono">{p.number}</span> · {p.center.name}</p>
                       </div>
                       <ChevronRight className="size-5 text-slate-300" />
                     </Link>

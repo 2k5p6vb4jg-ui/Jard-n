@@ -26,6 +26,7 @@ const ENTITIES: Record<string, string> = {
   CatalogOption: "Opciones",
   Photo: "Foto",
   Center: "Centro",
+  CenterProposal: "Propuesta",
   CompressionStocking: "Medias",
   ClinicalDocument: "Documento",
   Settings: "Ajustes",

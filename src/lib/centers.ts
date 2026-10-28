@@ -166,3 +166,130 @@ export async function findLegacyOrders(centerId: string) {
     return n.length >= 4 && (n.includes(name) || name.includes(n));
   });
 }
+
+/** Equipos del centro y de sus usuarios, para elegir los incluidos en una propuesta. */
+export async function centerProductsForSelect(centerId: string) {
+  const products = await prisma.trackedProduct.findMany({
+    where: { OR: [{ centerId }, { patient: { centerId } }] },
+    include: { category: { select: { label: true } }, patient: { select: { firstName: true, lastName: true } } },
+    orderBy: [{ categoryId: "asc" }, { serialNumber: "asc" }],
+  });
+  return products.map((p) => ({
+    id: p.id,
+    label: `${p.category.label} · ${p.brand} ${p.model}`,
+    detail: `S/N ${p.serialNumber} · ${p.patient ? `${p.patient.firstName} ${p.patient.lastName}` : "del centro"}`,
+  }));
+}
+
+export type Opportunity = { id: string; tone: "gold" | "rose" | "teal"; title: string; text: string; cta?: { label: string; href: string }; links?: { label: string; href: string }[] };
+
+/**
+ * Oportunidades de venta de un centro, calculadas con datos que la app ya tiene: reparaciones sueltas,
+ * equipos sin revisar o sin garantía, equipos antiguos, renovaciones de sus usuarios y propuestas sin respuesta.
+ */
+export async function centerOpportunities(centerId: string, activity: ActivityRow[]): Promise<Opportunity[]> {
+  const { getRenewalAlerts } = await import("./renewals");
+  const [center, products, alerts] = await Promise.all([
+    prisma.center.findUnique({
+      where: { id: centerId },
+      include: { status: true, contacts: { take: 1, orderBy: { createdAt: "asc" } }, proposals: { select: { id: true, number: true, status: true, issuedAt: true, kind: true } }, patients: { select: { id: true } } },
+    }),
+    prisma.trackedProduct.findMany({
+      where: { OR: [{ centerId }, { patient: { centerId } }] },
+      select: { id: true, deliveredAt: true, warrantyUntil: true, createdAt: true, interventions: { orderBy: { date: "desc" }, take: 1, select: { date: true } } },
+    }),
+    getRenewalAlerts(),
+  ]);
+  if (!center) return [];
+  const now = new Date();
+  const yearAgo = twelveMonthsAgo();
+  const days = (n: number) => new Date(now.getTime() + n * 86_400_000);
+  const base = `/centros/${centerId}/propuestas/nueva`;
+  const proposalHref = (tipo: string, ids: string[], titulo: string) => `${base}?tipo=${tipo}&equipos=${ids.join(",")}&titulo=${encodeURIComponent(titulo)}`;
+  const out: Opportunity[] = [];
+  const hasOpenMaintenance = center.proposals.some((p) => p.kind === "MAINTENANCE" && (p.status === "ACCEPTED" || p.status === "SENT" || p.status === "DRAFT"));
+  const allIds = products.map((p) => p.id);
+
+  const repairs = activity.filter((r) => r.kind === "repair" && r.billed && r.date >= yearAgo);
+  if (repairs.length >= 2 && !hasOpenMaintenance) {
+    const total = repairs.reduce((s, r) => s + r.totalCents, 0);
+    out.push({
+      id: "repairs",
+      tone: "gold",
+      title: `${repairs.length} reparaciones sueltas en 12 meses`,
+      text: `Han supuesto ${new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(total / 100)}. Un contrato de mantenimiento les da un coste fijo y a nosotros ingresos recurrentes.`,
+      cta: { label: "Preparar contrato de mantenimiento", href: proposalHref("MAINTENANCE", allIds, "Contrato de mantenimiento de equipos") },
+    });
+  }
+
+  const unchecked = products.filter((p) => {
+    const last = p.interventions[0]?.date ?? p.deliveredAt ?? p.createdAt;
+    return last < yearAgo;
+  });
+  if (unchecked.length && !hasOpenMaintenance) {
+    out.push({
+      id: "unchecked",
+      tone: "gold",
+      title: `${unchecked.length} ${unchecked.length === 1 ? "equipo" : "equipos"} sin revisión en el último año`,
+      text: "Una revisión preventiva evita averías y es una buena forma de entrar con un contrato.",
+      cta: { label: "Proponer revisión", href: proposalHref("MAINTENANCE", unchecked.map((p) => p.id), "Revisión preventiva de equipos") },
+    });
+  }
+
+  const warranty = products.filter((p) => p.warrantyUntil && p.warrantyUntil > days(-180) && p.warrantyUntil < days(60));
+  if (warranty.length) {
+    out.push({
+      id: "warranty",
+      tone: "rose",
+      title: `${warranty.length} ${warranty.length === 1 ? "equipo con la garantía vencida o a punto" : "equipos con la garantía vencida o a punto"} de vencer`,
+      text: "Cuando acaba la garantía, las reparaciones las paga el centro: buen momento para ofrecer mantenimiento.",
+      cta: { label: "Ofrecer mantenimiento", href: proposalHref("MAINTENANCE", warranty.map((p) => p.id), "Mantenimiento tras la garantía") },
+    });
+  }
+
+  const old = products.filter((p) => (p.deliveredAt ?? p.createdAt) < days(-5 * 365));
+  if (old.length) {
+    out.push({
+      id: "old",
+      tone: "teal",
+      title: `${old.length} ${old.length === 1 ? "equipo" : "equipos"} con más de 5 años`,
+      text: "Candidatos a renovación: un pack con precio cerrado facilita la decisión.",
+      cta: { label: "Proponer pack de renovación", href: proposalHref("SALE_PACK", old.map((p) => p.id), "Renovación de equipos") },
+    });
+  }
+
+  const ids = new Set(center.patients.map((p) => p.id));
+  const renewals = alerts.filter((a) => ids.has(a.patientId));
+  if (renewals.length) {
+    out.push({
+      id: "renewals",
+      tone: "teal",
+      title: `${renewals.length} ${renewals.length === 1 ? "usuario del centro" : "usuarios del centro"} con plantillas o medias por renovar`,
+      text: "Avise al centro o a las familias: se pueden organizar las tomas de medidas en una sola visita.",
+      links: renewals.slice(0, 5).map((a) => ({ label: a.patientName, href: `/pacientes/${a.patientId}` })),
+    });
+  }
+
+  const waiting = center.proposals.filter((p) => p.status === "SENT" && p.issuedAt < days(-14));
+  for (const p of waiting) {
+    const n = Math.round((now.getTime() - p.issuedAt.getTime()) / 86_400_000);
+    out.push({
+      id: `waiting-${p.id}`,
+      tone: "rose",
+      title: `La propuesta ${p.number} lleva ${n} días sin respuesta`,
+      text: center.contacts[0] ? `Llame a ${center.contacts[0].name}${center.contacts[0].phone ? ` (${center.contacts[0].phone})` : ""} para hacer seguimiento.` : "Haga una llamada de seguimiento.",
+      cta: { label: "Ver propuesta", href: `/centros/${centerId}/propuestas/${p.id}` },
+    });
+  }
+
+  if (center.proposals.length === 0 && center.status.key !== "INACTIVE") {
+    out.push({
+      id: "first",
+      tone: "gold",
+      title: "Todavía no le hemos hecho ninguna propuesta",
+      text: center.places ? `Con ${center.places} plazas, un pack de equipos o un contrato de revisiones puede ser un buen primer paso.` : "Un pack de equipos o un contrato de revisiones puede ser un buen primer paso.",
+      cta: { label: "Nueva propuesta", href: base },
+    });
+  }
+  return out;
+}

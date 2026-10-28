@@ -145,6 +145,11 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
   centro muestra lo facturado en 12 meses (directo / a través del centro), su historial, sus equipos y sus clientes, y
   permite vincular las reparaciones antiguas apuntadas a su nombre. Filtro por centro en Reparaciones y Plantillas y
   origen de la facturación (particulares / centros) en Estadísticas.
+- **Propuestas a centros** (packs de venta, contratos de mantenimiento o de reparaciones): conceptos con precio, descuento,
+  IVA, facturación única/mensual/trimestral/anual, duración, revisiones al año y equipos incluidos; PDF con la imagen de la
+  marca (`PROP-AAAA-NNNN`) y estados borrador → entregada → aceptada/rechazada. Al aceptar, un «posible cliente» pasa a activo.
+- **Oportunidades** en la ficha de cada centro, calculadas solas: reparaciones sueltas que justifican un contrato, equipos
+  sin revisar o sin garantía, equipos antiguos, usuarios con plantillas o medias por renovar y propuestas sin respuesta.
 - **Ficha del cliente:** apartados **Reparaciones** y **Plantillas** con su historial y botón «Nueva», que abre el
   formulario con el cliente ya elegido. La prescripción clínica de plantillas (patologías, correcciones, avisos de
   renovación) sigue disponible, plegada al final de la ficha.

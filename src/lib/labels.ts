@@ -184,3 +184,26 @@ export const centerLink: Record<import("@prisma/client").CenterLink, { label: st
 export function centerStatusTone(key: string | null): Tone {
   return ({ ACTIVE: "emerald", PROSPECT: "gold", INACTIVE: "slate" } as Record<string, Tone>)[key ?? ""] ?? "sky";
 }
+
+export const proposalKind: Record<import("@prisma/client").ProposalKind, { label: string; hint: string }> = {
+  SALE_PACK: { label: "Pack de venta", hint: "Varios equipos o productos a precio cerrado (p. ej. 3 sillas + cojines)" },
+  MAINTENANCE: { label: "Contrato de mantenimiento", hint: "Revisiones periódicas de los equipos del centro" },
+  REPAIR_PLAN: { label: "Contrato de reparaciones", hint: "Bolsa de horas o cuota para reparaciones" },
+  OTHER: { label: "Otra propuesta", hint: "" },
+};
+
+export const billingPeriod: Record<import("@prisma/client").BillingPeriod, { label: string; per: string; months: number }> = {
+  ONE_OFF: { label: "Pago único", per: "", months: 0 },
+  MONTHLY: { label: "Mensual", per: "al mes", months: 1 },
+  QUARTERLY: { label: "Trimestral", per: "al trimestre", months: 3 },
+  YEARLY: { label: "Anual", per: "al año", months: 12 },
+};
+
+/** Estados de una propuesta a un centro (mismos que un presupuesto, en femenino) */
+export const proposalStatus: Record<import("@prisma/client").QuoteStatus, { label: string; tone: Tone }> = {
+  DRAFT: { label: "Borrador", tone: "slate" },
+  SENT: { label: "Entregada", tone: "sky" },
+  ACCEPTED: { label: "Aceptada", tone: "emerald" },
+  REJECTED: { label: "Rechazada", tone: "rose" },
+  EXPIRED: { label: "Caducada", tone: "amber" },
+};

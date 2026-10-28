@@ -135,7 +135,7 @@ async function main() {
       contacts: { create: [{ name: "Laura Gómez", role: "Trabajadora social", phone: "961 555 445" }] },
     },
   });
-  await prisma.center.create({
+  const marAzul = await prisma.center.create({
     data: {
       name: "Residencia Mar Azul", typeId: await centerOpt("CENTER_TYPE", { label: "Residencia privada" }), statusId: await centerOpt("CENTER_STATUS", { key: "PROSPECT" }),
       city: "Alboraya", places: 80, notes: "Primera visita en septiembre. Interesados en un contrato de mantenimiento de grúas.",
@@ -542,6 +542,22 @@ async function main() {
   });
   await prisma.productIntervention.create({ data: { productId: sillasResidencia[0].id, workOrderId: directa.id, type: "REPAIR", date: daysAgo(40), description: directa.workDone! } });
   await prisma.insoleOrder.updateMany({ where: { patientId: antonio.id }, data: { centerId: virgenCarmen.id, centerLink: "REFERRED" } });
+
+  // Propuestas: un pack aceptado hace un año y un contrato enviado hace 3 semanas, aún sin respuesta
+  const proposal = async (n: number, d: Omit<Prisma.CenterProposalUncheckedCreateInput, "number" | "linesJson" | "subtotalCents" | "taxCents" | "totalCents">, lines: { description: string; quantity: number; unit: string; unitPriceCents: number }[]) => {
+    const subtotal = Math.round(lines.reduce((s, l) => s + l.quantity * l.unitPriceCents, 0) * (1 - (d.discountPercent ?? 0) / 100));
+    const tax = Math.round(subtotal * ((d.taxRate ?? 21) / 100));
+    return prisma.centerProposal.create({ data: { ...d, number: `PROP-${now.getFullYear()}-${String(n).padStart(4, "0")}`, linesJson: JSON.stringify(lines), subtotalCents: subtotal, taxCents: tax, totalCents: subtotal + tax } });
+  };
+  await proposal(1, {
+    centerId: naranjos.id, kind: "SALE_PACK", title: "Renovación de 3 sillas de ruedas manuales", status: "ACCEPTED", taxRate: 10, discountPercent: 5,
+    issuedAt: daysAgo(440), validUntil: daysAgo(410), decidedAt: daysAgo(430), intro: "Tres sillas Breezy Premier con cojín antiescaras, entrega y ajuste en la residencia.",
+    products: { connect: sillasResidencia.map((x) => ({ id: x.id })) },
+  }, [{ description: "Silla de ruedas manual Breezy Premier", quantity: 3, unit: "ud", unitPriceCents: 35500 }, { description: "Cojín antiescaras viscoelástico", quantity: 3, unit: "ud", unitPriceCents: 4500 }]);
+  await proposal(2, {
+    centerId: marAzul.id, kind: "MAINTENANCE", title: "Contrato de mantenimiento de grúas", status: "SENT", taxRate: 21, billingPeriod: "QUARTERLY", durationMonths: 12, visitsPerYear: 4,
+    issuedAt: daysAgo(21), validUntil: daysAhead(9), intro: "Revisión trimestral de las 6 grúas de traslado: comprobación de arnés, batería, actuador y frenos, con informe para inspección.",
+  }, [{ description: "Revisión preventiva de grúa de traslado", quantity: 6, unit: "grúa", unitPriceCents: 2800 }, { description: "Desplazamiento", quantity: 1, unit: "visita", unitPriceCents: 2000 }]);
 
   // ── Histórico de 12 meses (para que las estadísticas tengan datos) ──────
   // Pseudoaleatorio con semilla fija: el resultado es siempre el mismo

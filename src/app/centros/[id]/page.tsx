@@ -2,6 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
+  ArrowRight,
+  FileSignature,
+  Lightbulb,
   Building2,
   ClipboardPlus,
   Contact,
@@ -22,8 +25,9 @@ import {
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/dates";
 import { formatEUR } from "@/lib/money";
-import { centerLink, centerStatusTone } from "@/lib/labels";
-import { type ActivityRow, findLegacyOrders, orderActivity, revenueSplit, twelveMonthsAgo } from "@/lib/centers";
+import { billingPeriod, centerLink, centerStatusTone, proposalKind, proposalStatus } from "@/lib/labels";
+import { effectiveQuoteStatus } from "@/lib/quotes";
+import { type ActivityRow, centerOpportunities, findLegacyOrders, orderActivity, revenueSplit, twelveMonthsAgo } from "@/lib/centers";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
@@ -61,7 +65,7 @@ function ActivityList({ rows, empty, showLink }: { rows: ActivityRow[]; empty: s
 
 export default async function CenterPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [center, activity, products, legacy] = await Promise.all([
+  const [center, activity, products, legacy, proposals] = await Promise.all([
     prisma.center.findUnique({
       where: { id },
       include: {
@@ -78,8 +82,10 @@ export default async function CenterPage({ params }: { params: Promise<{ id: str
       orderBy: { deliveredAt: "desc" },
     }),
     findLegacyOrders(id),
+    prisma.centerProposal.findMany({ where: { centerId: id }, orderBy: { issuedAt: "desc" } }),
   ]);
   if (!center) notFound();
+  const opportunities = await centerOpportunities(id, activity);
 
   const since = twelveMonthsAgo();
   const year = revenueSplit(activity.filter((r) => r.date >= since));
@@ -112,6 +118,7 @@ export default async function CenterPage({ params }: { params: Promise<{ id: str
         actions={
           <>
             <LinkButton href={`/centros/${id}/editar`} variant="secondary" icon={Pencil}>Editar</LinkButton>
+            <LinkButton href={`/centros/${id}/propuestas/nueva`} variant="secondary" icon={FileSignature}>Propuesta</LinkButton>
             <LinkButton href={`/plantillas/nueva?centro=${id}`} variant="secondary" icon={Plus}>Plantillas</LinkButton>
             <LinkButton href={`/taller/nueva?centro=${id}`} icon={ClipboardPlus}>Nueva reparación</LinkButton>
           </>
@@ -142,6 +149,67 @@ export default async function CenterPage({ params }: { params: Promise<{ id: str
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          <Card>
+            <CardHeader title="Oportunidades" icon={Lightbulb} subtitle="Calculadas con su historial, sus equipos y sus usuarios" />
+            {opportunities.length === 0 ? (
+              <p className="px-5 py-6 text-center text-sm text-slate-500">Sin oportunidades detectadas ahora mismo.</p>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {opportunities.map((o) => (
+                  <li key={o.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center">
+                    <span className={`hidden size-2.5 shrink-0 rounded-full sm:block ${{ gold: "bg-gold-500", rose: "bg-rose-500", teal: "bg-teal-600" }[o.tone]}`} aria-hidden />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-slate-800">{o.title}</p>
+                      <p className="text-sm text-slate-500">{o.text}</p>
+                      {o.links && (
+                        <p className="mt-1 flex flex-wrap gap-x-3 text-sm">
+                          {o.links.map((l) => <Link key={l.href} href={l.href} className="font-medium text-teal-700 hover:underline">{l.label}</Link>)}
+                        </p>
+                      )}
+                    </div>
+                    {o.cta && (
+                      <Link href={o.cta.href} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-medium text-teal-700 ring-1 ring-inset ring-teal-200 hover:bg-teal-50">
+                        {o.cta.label} <ArrowRight className="size-4" />
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="Propuestas"
+              icon={FileSignature}
+              subtitle="Packs de venta y contratos, con PDF"
+              action={<Link href={`/centros/${id}/propuestas/nueva`} className="inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-sm font-medium text-teal-700 hover:bg-teal-50"><Plus className="size-4" />Nueva</Link>}
+            />
+            {proposals.length === 0 ? (
+              <p className="px-5 py-6 text-center text-sm text-slate-500">Todavía no hay propuestas para este centro.</p>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {proposals.map((p) => {
+                  const st = effectiveQuoteStatus(p) as keyof typeof proposalStatus;
+                  return (
+                    <li key={p.id}>
+                      <Link href={`/centros/${id}/propuestas/${p.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium text-slate-800">{p.title}</p>
+                          <p className="text-xs text-slate-500"><span className="font-mono">{p.number}</span> · {proposalKind[p.kind].label} · {formatDate(p.issuedAt)}</p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-sm font-medium text-slate-800">{formatEUR(p.totalCents)}{billingPeriod[p.billingPeriod].per && <span className="font-normal text-slate-500"> {billingPeriod[p.billingPeriod].per}</span>}</p>
+                          <Badge tone={proposalStatus[st].tone}>{proposalStatus[st].label}</Badge>
+                        </div>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Card>
+
           <Card>
             <CardHeader title="Pedidos del centro" icon={Building2} subtitle="Lo que el centro compra o repara para sí mismo" />
             <ActivityList rows={direct} empty="Todavía no hay pedidos directos del centro." />

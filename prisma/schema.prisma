@@ -754,6 +754,7 @@ model Center {
   notes      String?
 
   contacts     CenterContact[]
+  proposals    CenterProposal[]
   patients     Patient[]
   workOrders   WorkOrder[]
   insoleOrders InsoleOrder[]
@@ -763,6 +764,54 @@ model Center {
   updatedAt DateTime @updatedAt
 
   @@index([name])
+}
+
+enum ProposalKind {
+  SALE_PACK // Pack de venta (p. ej. 3 sillas + cojines)
+  MAINTENANCE // Contrato de mantenimiento (revisiones periódicas)
+  REPAIR_PLAN // Contrato de reparaciones (bolsa de horas, cuota…)
+  OTHER
+}
+
+enum BillingPeriod {
+  ONE_OFF // Pago único
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+/// Propuesta comercial a un centro (pack o contrato), con PDF. Los importes quedan congelados al guardarla.
+model CenterProposal {
+  id              String           @id @default(cuid())
+  /// PROP-2026-0001
+  number          String           @unique
+  centerId        String
+  center          Center           @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  kind            ProposalKind
+  title           String
+  intro           String? // Texto para el centro
+  /// Líneas [{ description, quantity, unit, unitPriceCents }]
+  linesJson       String
+  discountPercent Float            @default(0)
+  taxRate         Float            @default(21)
+  subtotalCents   Int // Base imponible (tras descuento)
+  taxCents        Int
+  totalCents      Int // Importe por periodo (o total si es pago único)
+  billingPeriod   BillingPeriod    @default(ONE_OFF)
+  durationMonths  Int? // Duración del contrato
+  visitsPerYear   Int? // Revisiones al año (mantenimiento)
+  status          QuoteStatus      @default(DRAFT)
+  issuedAt        DateTime         @default(now())
+  validUntil      DateTime
+  decidedAt       DateTime? // Fecha de aceptación o rechazo
+  internalNotes   String?
+  /// Equipos incluidos (contratos de mantenimiento)
+  products        TrackedProduct[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([centerId])
 }
 
 /// Persona de contacto en un centro (dirección, compras, enfermería…)
@@ -817,6 +866,8 @@ model TrackedProduct {
 
   interventions ProductIntervention[]
   workOrders    WorkOrder[]
+
+  proposals CenterProposal[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
