@@ -6,6 +6,7 @@ import { type InterventionType, LaborMode, WorkOrderStatus } from "@prisma/clien
 import { prisma } from "@/lib/prisma";
 import { readOption } from "@/lib/options";
 import { readCenterLink } from "@/lib/centers";
+import { nextWorkOrderCode } from "@/lib/workOrderOptions";
 import { WORK_ORDER_FLOW } from "@/lib/labels";
 import { type ActionState, bool, cents, date, FormError, handle, num, oneOf, required, str } from "@/lib/forms";
 
@@ -14,13 +15,6 @@ const refresh = (id: string) => {
   revalidatePath("/taller");
   revalidatePath("/");
 };
-
-async function nextCode() {
-  const prefix = `OT-${new Date().getFullYear()}-`;
-  const last = await prisma.workOrder.findFirst({ where: { code: { startsWith: prefix } }, orderBy: { code: "desc" }, select: { code: true } });
-  const n = last ? Number(last.code.slice(prefix.length)) + 1 : 1;
-  return `${prefix}${String(n).padStart(4, "0")}`;
-}
 
 // ── Alta / edición ──────────────────────────────────────────────────────────
 
@@ -93,7 +87,7 @@ export async function createWorkOrder(_prev: ActionState, fd: FormData): Promise
     const wo = await prisma.workOrder.create({
       data: {
         ...data,
-        code: await nextCode(),
+        code: await nextWorkOrderCode(),
         receivedAt: date(fd, "receivedAt") ?? new Date(),
         statusHistory: { create: { toStatus: "RECEIVED" } },
       },
@@ -142,7 +136,10 @@ export async function changeStatus(id: string, to: WorkOrderStatus, fd: FormData
   const now = new Date();
 
   await prisma.$transaction(async (tx) => {
-    const wo = await tx.workOrder.findUniqueOrThrow({ where: { id }, include: { serviceType: { select: { key: true } } } });
+    const wo = await tx.workOrder.findUniqueOrThrow({
+      where: { id },
+      include: { serviceType: { select: { key: true } }, maintenanceVisit: { include: { proposal: { select: { number: true, products: { select: { id: true } } } } } } },
+    });
     if (!canTransition(wo.status, to)) return;
 
     await tx.workOrder.update({
@@ -177,6 +174,16 @@ export async function changeStatus(id: string, to: WorkOrderStatus, fd: FormData
             underWarranty: wo.underWarranty,
             technicianId: wo.technicianId,
           },
+        });
+      }
+    }
+
+    // Revisión de un contrato de mantenimiento: queda en el histórico de todos los equipos del contrato
+    if (to === "DELIVERED" && wo.maintenanceVisit) {
+      const done = new Set((await tx.productIntervention.findMany({ where: { workOrderId: id }, select: { productId: true } })).map((i) => i.productId));
+      for (const p of wo.maintenanceVisit.proposal.products.filter((p) => !done.has(p.id))) {
+        await tx.productIntervention.create({
+          data: { productId: p.id, workOrderId: id, type: "MAINTENANCE", date: now, description: `${wo.code} · Revisión del contrato ${wo.maintenanceVisit.proposal.number}`, technicianId: wo.technicianId },
         });
       }
     }

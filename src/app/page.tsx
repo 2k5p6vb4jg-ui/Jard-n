@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { AlertTriangle, ArrowRight, BellRing, ClipboardPlus, Footprints, Plus, UserPlus, Wrench } from "lucide-react";
+import { AlertTriangle, ArrowRight, BellRing, CalendarCheck, ClipboardPlus, Footprints, Plus, UserPlus, Wrench } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getRenewalAlerts } from "@/lib/renewals";
 import { formatDate } from "@/lib/dates";
@@ -13,6 +13,9 @@ import { LinkButton } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { RenewalList } from "@/components/dashboard/RenewalList";
+import { SubmitButton } from "@/components/ui/Form";
+import { getDueVisits } from "@/lib/contracts";
+import { createVisitOrder } from "@/app/centros/propuestas";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +43,7 @@ function Kpi({ href, label, value, hint, icon: Icon, tone = "plain" }: { href: s
 
 export default async function DashboardPage() {
   const today = new Date(new Date().setHours(0, 0, 0, 0));
-  const [alerts, byStatus, activeOrders, st, insoleOpts, openInsoles, lateOrders] = await Promise.all([
+  const [alerts, byStatus, activeOrders, st, insoleOpts, openInsoles, lateOrders, dueVisits] = await Promise.all([
     getRenewalAlerts(),
     prisma.workOrder.groupBy({ by: ["status"], _count: { _all: true } }),
     prisma.workOrder.findMany({
@@ -61,6 +64,7 @@ export default async function DashboardPage() {
       orderBy: [{ dueAt: "asc" }, { createdAt: "asc" }],
     }),
     prisma.workOrder.count({ where: { status: { notIn: ["DELIVERED", "CANCELLED"] }, promisedAt: { lt: today } } }),
+    getDueVisits(14),
   ]);
 
   const count = (s: string) => byStatus.find((b) => b.status === s)?._count._all ?? 0;
@@ -201,16 +205,41 @@ export default async function DashboardPage() {
           </Card>
         </div>
 
-        <Card className="h-fit xl:col-span-2">
-          <div id="avisos" className="scroll-mt-20" />
-          <CardHeader
-            title="Avisos de renovación"
-            subtitle="Medias cada 6 meses · Plantillas cada 12"
-            icon={BellRing}
-            action={overdue > 0 ? <Badge tone="rose"><AlertTriangle className="size-3.5" />{overdue} vencidos</Badge> : undefined}
-          />
-          <RenewalList alerts={alerts} />
-        </Card>
+        <div className="space-y-6 xl:col-span-2">
+          {dueVisits.length > 0 && (
+            <Card>
+              <CardHeader title="Revisiones de contratos" icon={CalendarCheck} subtitle="Próximos 14 días y atrasadas" />
+              <ul className="divide-y divide-slate-100">
+                {dueVisits.map((v) => {
+                  const late = v.dueAt < today;
+                  return (
+                    <li key={v.id} className="flex items-center gap-3 px-5 py-3">
+                      <Link href={`/centros/${v.proposal.centerId}/propuestas/${v.proposal.id}`} className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-slate-800">{v.proposal.center.name}</p>
+                        <p className="truncate text-sm text-slate-500">
+                          <span className={late ? "font-medium text-rose-600" : ""}>{late ? "Atrasada · " : ""}{formatDate(v.dueAt)}</span> · {v.proposal._count.products} equipos · {v.proposal.number}
+                        </p>
+                      </Link>
+                      <form action={createVisitOrder.bind(null, v.id)}>
+                        <SubmitButton icon={<ClipboardPlus className="size-4" />} className="min-h-11 px-3 text-sm lg:min-h-10">Crear orden</SubmitButton>
+                      </form>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Card>
+          )}
+          <Card className="h-fit">
+            <div id="avisos" className="scroll-mt-20" />
+            <CardHeader
+              title="Avisos de renovación"
+              subtitle="Medias cada 6 meses · Plantillas cada 12"
+              icon={BellRing}
+              action={overdue > 0 ? <Badge tone="rose"><AlertTriangle className="size-3.5" />{overdue} vencidos</Badge> : undefined}
+            />
+            <RenewalList alerts={alerts} />
+          </Card>
+        </div>
       </div>
     </>
   );

@@ -7,7 +7,9 @@ import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import { addDays } from "@/lib/dates";
 import { type ProposalLine, proposalTotals } from "@/lib/proposals";
-import { type ActionState, FormError, handle, int, num, oneOf, required, str } from "@/lib/forms";
+import { type ActionState, date, FormError, handle, int, num, oneOf, required, str } from "@/lib/forms";
+import { visitSchedule } from "@/lib/contracts";
+import { nextWorkOrderCode } from "@/lib/workOrderOptions";
 
 async function nextNumber() {
   const prefix = `PROP-${new Date().getFullYear()}-`;
@@ -107,7 +109,12 @@ export async function saveProposal(centerId: string, proposalId: string | null, 
 export async function setProposalStatus(id: string, to: QuoteStatus) {
   const p = await prisma.centerProposal.findUnique({ where: { id } });
   if (!p || !["SENT", "ACCEPTED", "REJECTED", "DRAFT"].includes(to)) return;
-  await prisma.centerProposal.update({ where: { id }, data: { status: to, decidedAt: to === "ACCEPTED" || to === "REJECTED" ? new Date() : null } });
+  const decidedAt = to === "ACCEPTED" || to === "REJECTED" ? new Date() : null;
+  await prisma.centerProposal.update({ where: { id }, data: { status: to, decidedAt } });
+  // Contrato de mantenimiento aceptado: se programa el calendario de revisiones
+  if (to === "ACCEPTED" && p.kind === "MAINTENANCE" && p.visitsPerYear && !(await prisma.maintenanceVisit.count({ where: { proposalId: id } }))) {
+    await prisma.maintenanceVisit.createMany({ data: visitSchedule(decidedAt!, p.visitsPerYear, p.durationMonths).map((dueAt) => ({ proposalId: id, dueAt })) });
+  }
   // Al aceptar una propuesta, un centro «posible cliente» pasa a activo
   if (to === "ACCEPTED") {
     const active = await prisma.catalogOption.findFirst({ where: { kind: "CENTER_STATUS", key: "ACTIVE", active: true } });
@@ -124,4 +131,57 @@ export async function deleteProposal(id: string) {
   await audit("DELETE", "CenterProposal", id, p.number);
   revalidatePath(`/centros/${p.centerId}`);
   redirect(`/centros/${p.centerId}`);
+}
+
+/** Crea la orden de taller de una revisión del contrato (sin coste de mano de obra: va incluida en el contrato). */
+export async function createVisitOrder(visitId: string) {
+  const v = await prisma.maintenanceVisit.findUnique({
+    where: { id: visitId },
+    include: { workOrder: { select: { id: true, status: true } }, proposal: { include: { center: true, products: { include: { category: true } } } } },
+  });
+  if (!v) return;
+  if (v.workOrder && v.workOrder.status !== "CANCELLED") redirect(`/taller/${v.workOrder.id}`);
+  const { proposal: p } = v;
+  const key = async (kind: "SERVICE_TYPE" | "PRIORITY" | "EQUIPMENT_CATEGORY", k: string) =>
+    (await prisma.catalogOption.findFirst({ where: { kind, key: k } }))?.id ?? (await prisma.catalogOption.findFirstOrThrow({ where: { kind }, orderBy: [{ active: "desc" }, { sortOrder: "asc" }] })).id;
+  const categories = [...new Set(p.products.map((x) => x.categoryId))];
+  const list = p.products.map((x) => `${x.category.label} ${x.brand} ${x.model} (S/N ${x.serialNumber})`).join("; ");
+  const wo = await prisma.workOrder.create({
+    data: {
+      code: await nextWorkOrderCode(),
+      centerId: p.centerId,
+      centerLink: "ORDERED",
+      customerName: p.center.name,
+      customerPhone: p.center.phone,
+      productId: p.products.length === 1 ? p.products[0].id : null,
+      equipmentCategoryId: categories.length === 1 ? categories[0] : await key("EQUIPMENT_CATEGORY", "OTHER"),
+      equipmentBrand: p.products.length === 1 ? p.products[0].brand : null,
+      equipmentModel: p.products.length === 1 ? p.products[0].model : `${p.products.length} equipos del contrato`,
+      serialNumber: p.products.length === 1 ? p.products[0].serialNumber : null,
+      serviceTypeId: await key("SERVICE_TYPE", "PREVENTIVE_MAINTENANCE"),
+      priorityId: await key("PRIORITY", "NORMAL"),
+      reportedIssue: `Revisión preventiva del contrato ${p.number}${list ? `: ${list}` : ""}.`,
+      internalNotes: `Incluida en el contrato ${p.number}. Las piezas o reparaciones no incluidas se presupuestan aparte.`,
+      laborMode: "FIXED",
+      laborFixedCents: 0,
+      promisedAt: v.dueAt,
+      statusHistory: { create: { toStatus: "RECEIVED", note: `Revisión programada del contrato ${p.number}` } },
+    },
+  });
+  await prisma.maintenanceVisit.update({ where: { id: visitId }, data: { workOrderId: wo.id } });
+  await audit("CREATE", "WorkOrder", wo.id, `Revisión del contrato ${p.number}`);
+  revalidatePath("/");
+  revalidatePath(`/centros/${p.centerId}/propuestas/${p.id}`);
+  redirect(`/taller/${wo.id}`);
+}
+
+export async function rescheduleVisit(visitId: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
+  const res = await handle(async () => {
+    const d = date(fd, "dueAt");
+    if (!d) throw new FormError("Indique la fecha.");
+    const v = await prisma.maintenanceVisit.update({ where: { id: visitId }, data: { dueAt: d }, select: { proposal: { select: { id: true, centerId: true } } } });
+    revalidatePath(`/centros/${v.proposal.centerId}/propuestas/${v.proposal.id}`);
+    revalidatePath("/");
+  });
+  return res;
 }

@@ -148,6 +148,10 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
 - **Propuestas a centros** (packs de venta, contratos de mantenimiento o de reparaciones): conceptos con precio, descuento,
   IVA, facturación única/mensual/trimestral/anual, duración, revisiones al año y equipos incluidos; PDF con la imagen de la
   marca (`PROP-AAAA-NNNN`) y estados borrador → entregada → aceptada/rechazada. Al aceptar, un «posible cliente» pasa a activo.
+- **Contratos de mantenimiento:** al aceptar uno se programa su calendario de revisiones (según revisiones al año y
+  duración). Las que vencen en 14 días o están atrasadas avisan en el Panel; «Crear orden» abre la orden de revisión en
+  Reparaciones (sin coste de mano de obra, va en el contrato) y al entregarla queda en el histórico de todos los equipos
+  del contrato. Las fechas se pueden mover y, cuando el contrato va a terminar, se sugiere la renovación.
 - **Oportunidades** en la ficha de cada centro, calculadas solas: reparaciones sueltas que justifican un contrato, equipos
   sin revisar o sin garantía, equipos antiguos, usuarios con plantillas o medias por renovar y propuestas sin respuesta.
 - **Ficha del cliente:** apartados **Reparaciones** y **Plantillas** con su historial y botón «Nueva», que abre el

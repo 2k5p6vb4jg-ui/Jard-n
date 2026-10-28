@@ -15,56 +15,59 @@ function isActive(pathname: string, href: string) {
 export function Sidebar({ businessName, logoUrl, hasPin }: { businessName: string; logoUrl: string | null; hasPin: boolean }) {
   const pathname = usePathname();
   if (pathname === "/acceso") return null;
+  // El fondo oscuro ocupa toda la altura de la página; el contenido de la barra se queda fijo al desplazarse
   return (
-    <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col bg-ink-900 text-white/70 lg:flex">
-      <Link href="/" className="flex items-center gap-3 px-5 pb-6 pt-7">
-        <BrandMark name={businessName} logoUrl={logoUrl} />
-        <div className="min-w-0 leading-tight">
-          <p className="truncate font-semibold text-white">{businessName}</p>
-          <p className="text-xs text-gold-400/90">Gestión clínica y taller</p>
-        </div>
-      </Link>
-      <form action="/buscar" className="relative mx-4 mb-4">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/40" />
-        <input
-          name="q"
-          placeholder="Buscar…"
-          aria-label="Buscar"
-          className="min-h-10 w-full rounded-lg border border-white/10 bg-white/5 pl-9 pr-3 text-sm text-white outline-none transition placeholder:text-white/40 focus:border-gold-500/60 focus:bg-white/10"
-        />
-      </form>
-      <nav className="flex flex-1 flex-col gap-0.5 px-3">
-        {NAV.map(({ href, label, icon: Icon }) => {
-          const active = isActive(pathname, href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              aria-current={active ? "page" : undefined}
-              className={`relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-[15px] font-medium transition ${
-                active ? "bg-white/10 text-white" : "hover:bg-white/5 hover:text-white"
-              }`}
-            >
-              {active && <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-gold-500" aria-hidden />}
-              <Icon className={`size-5 ${active ? "text-gold-400" : "text-white/50"}`} />
-              {label}
-            </Link>
-          );
-        })}
-      </nav>
-      {hasPin && (
-        <form action={lock} className="mx-3">
-          <button type="submit" className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-[15px] font-medium transition hover:bg-white/5 hover:text-white">
-            <Lock className="size-5 text-white/50" />
-            Bloquear
-          </button>
+    <div className="hidden w-64 shrink-0 bg-ink-900 lg:block">
+      <aside className="sticky top-0 flex h-dvh flex-col text-white/70">
+        <Link href="/" className="flex items-center gap-3 px-5 pb-6 pt-7">
+          <BrandMark name={businessName} logoUrl={logoUrl} />
+          <div className="min-w-0 leading-tight">
+            <p className="truncate font-semibold text-white">{businessName}</p>
+            <p className="text-xs text-gold-400/90">Gestión clínica y taller</p>
+          </div>
+        </Link>
+        <form action="/buscar" className="relative mx-4 mb-4">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/40" />
+          <input
+            name="q"
+            placeholder="Buscar…"
+            aria-label="Buscar"
+            className="min-h-10 w-full rounded-lg border border-white/10 bg-white/5 pl-9 pr-3 text-sm text-white outline-none transition placeholder:text-white/40 focus:border-gold-500/60 focus:bg-white/10"
+          />
         </form>
-      )}
-      <div className="m-3 flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2.5 text-xs text-white/50">
-        <ShieldCheck className="size-4 shrink-0 text-gold-500" />
-        Datos guardados solo en este equipo
-      </div>
-    </aside>
+        <nav className="flex flex-1 flex-col gap-0.5 px-3">
+          {NAV.map(({ href, label, icon: Icon }) => {
+            const active = isActive(pathname, href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                aria-current={active ? "page" : undefined}
+                className={`relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-[15px] font-medium transition ${
+                  active ? "bg-white/10 text-white" : "hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                {active && <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-gold-500" aria-hidden />}
+                <Icon className={`size-5 ${active ? "text-gold-400" : "text-white/50"}`} />
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
+        {hasPin && (
+          <form action={lock} className="mx-3">
+            <button type="submit" className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-[15px] font-medium transition hover:bg-white/5 hover:text-white">
+              <Lock className="size-5 text-white/50" />
+              Bloquear
+            </button>
+          </form>
+        )}
+        <div className="m-3 flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2.5 text-xs text-white/50">
+          <ShieldCheck className="size-4 shrink-0 text-gold-500" />
+          Datos guardados solo en este equipo
+        </div>
+      </aside>
+    </div>
   );
 }
 

@@ -526,6 +526,8 @@ model WorkOrder {
   quotes        Quote[]
   interventions ProductIntervention[]
 
+  maintenanceVisit MaintenanceVisit?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   photos    Photo[]
@@ -782,36 +784,53 @@ enum BillingPeriod {
 
 /// Propuesta comercial a un centro (pack o contrato), con PDF. Los importes quedan congelados al guardarla.
 model CenterProposal {
-  id              String           @id @default(cuid())
+  id              String             @id @default(cuid())
   /// PROP-2026-0001
-  number          String           @unique
+  number          String             @unique
   centerId        String
-  center          Center           @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  center          Center             @relation(fields: [centerId], references: [id], onDelete: Cascade)
   kind            ProposalKind
   title           String
   intro           String? // Texto para el centro
   /// Líneas [{ description, quantity, unit, unitPriceCents }]
   linesJson       String
-  discountPercent Float            @default(0)
-  taxRate         Float            @default(21)
+  discountPercent Float              @default(0)
+  taxRate         Float              @default(21)
   subtotalCents   Int // Base imponible (tras descuento)
   taxCents        Int
   totalCents      Int // Importe por periodo (o total si es pago único)
-  billingPeriod   BillingPeriod    @default(ONE_OFF)
+  billingPeriod   BillingPeriod      @default(ONE_OFF)
   durationMonths  Int? // Duración del contrato
   visitsPerYear   Int? // Revisiones al año (mantenimiento)
-  status          QuoteStatus      @default(DRAFT)
-  issuedAt        DateTime         @default(now())
+  status          QuoteStatus        @default(DRAFT)
+  issuedAt        DateTime           @default(now())
   validUntil      DateTime
   decidedAt       DateTime? // Fecha de aceptación o rechazo
   internalNotes   String?
   /// Equipos incluidos (contratos de mantenimiento)
   products        TrackedProduct[]
+  /// Calendario de revisiones (contratos de mantenimiento aceptados)
+  visits          MaintenanceVisit[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([centerId])
+}
+
+/// Revisión programada de un contrato de mantenimiento. Al crear su orden queda enlazada a ella.
+model MaintenanceVisit {
+  id          String         @id @default(cuid())
+  proposalId  String
+  proposal    CenterProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  dueAt       DateTime
+  workOrderId String?        @unique
+  workOrder   WorkOrder?     @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([proposalId])
+  @@index([dueAt])
 }
 
 /// Persona de contacto en un centro (dirección, compras, enfermería…)

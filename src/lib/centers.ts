@@ -192,7 +192,7 @@ export async function centerOpportunities(centerId: string, activity: ActivityRo
   const [center, products, alerts] = await Promise.all([
     prisma.center.findUnique({
       where: { id: centerId },
-      include: { status: true, contacts: { take: 1, orderBy: { createdAt: "asc" } }, proposals: { select: { id: true, number: true, status: true, issuedAt: true, kind: true } }, patients: { select: { id: true } } },
+      include: { status: true, contacts: { take: 1, orderBy: { createdAt: "asc" } }, proposals: { select: { id: true, number: true, title: true, status: true, issuedAt: true, kind: true, decidedAt: true, durationMonths: true, products: { select: { id: true } } } }, patients: { select: { id: true } } },
     }),
     prisma.trackedProduct.findMany({
       where: { OR: [{ centerId }, { patient: { centerId } }] },
@@ -207,7 +207,15 @@ export async function centerOpportunities(centerId: string, activity: ActivityRo
   const base = `/centros/${centerId}/propuestas/nueva`;
   const proposalHref = (tipo: string, ids: string[], titulo: string) => `${base}?tipo=${tipo}&equipos=${ids.join(",")}&titulo=${encodeURIComponent(titulo)}`;
   const out: Opportunity[] = [];
-  const hasOpenMaintenance = center.proposals.some((p) => p.kind === "MAINTENANCE" && (p.status === "ACCEPTED" || p.status === "SENT" || p.status === "DRAFT"));
+  // Contrato de mantenimiento en vigor o propuesta pendiente: no se vuelve a sugerir
+  const hasOpenMaintenance = center.proposals.some((p) => {
+    if (p.kind !== "MAINTENANCE") return false;
+    if (p.status === "SENT" || p.status === "DRAFT") return true;
+    if (p.status !== "ACCEPTED" || !p.decidedAt) return false;
+    const end = new Date(p.decidedAt);
+    end.setMonth(end.getMonth() + (p.durationMonths ?? 12));
+    return end > now;
+  });
   const allIds = products.map((p) => p.id);
 
   const repairs = activity.filter((r) => r.kind === "repair" && r.billed && r.date >= yearAgo);
@@ -268,6 +276,20 @@ export async function centerOpportunities(centerId: string, activity: ActivityRo
       text: "Avise al centro o a las familias: se pueden organizar las tomas de medidas en una sola visita.",
       links: renewals.slice(0, 5).map((a) => ({ label: a.patientName, href: `/pacientes/${a.patientId}` })),
     });
+  }
+
+  for (const p of center.proposals.filter((x) => x.kind === "MAINTENANCE" && x.status === "ACCEPTED" && x.decidedAt)) {
+    const end = new Date(p.decidedAt!);
+    end.setMonth(end.getMonth() + (p.durationMonths ?? 12));
+    if (end > days(-30) && end < days(60)) {
+      out.push({
+        id: `renew-${p.id}`,
+        tone: "rose",
+        title: `El contrato ${p.number} ${end < now ? "terminó" : "termina"} el ${new Intl.DateTimeFormat("es-ES").format(end)}`,
+        text: "Prepare la renovación con los mismos equipos antes de que acabe.",
+        cta: { label: "Proponer renovación", href: proposalHref("MAINTENANCE", p.products.map((x) => x.id), `Renovación: ${p.title}`) },
+      });
+    }
   }
 
   const waiting = center.proposals.filter((p) => p.status === "SENT" && p.issuedAt < days(-14));

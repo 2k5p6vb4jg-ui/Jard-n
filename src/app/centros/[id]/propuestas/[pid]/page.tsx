@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Download, Eye, FileText, Package, Pencil, Send, StickyNote, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarCheck, ClipboardPlus, Download, Save, Eye, FileText, Package, Pencil, Send, StickyNote, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/dates";
 import { formatEUR } from "@/lib/money";
@@ -13,13 +13,19 @@ import { LinkButton } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SubmitButton } from "@/components/ui/Form";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
-import { deleteProposal, setProposalStatus } from "../../../propuestas";
+import { createVisitOrder, deleteProposal, rescheduleVisit, setProposalStatus } from "../../../propuestas";
+import { contractEnd, visitState } from "@/lib/contracts";
+import { toDateInput } from "@/lib/forms";
+import { InlineForm } from "@/components/ui/InlineForm";
 
 export default async function ProposalPage({ params }: { params: Promise<{ id: string; pid: string }> }) {
   const { id, pid } = await params;
   const p = await prisma.centerProposal.findFirst({
     where: { id: pid, centerId: id },
-    include: { center: { select: { id: true, name: true } }, products: { include: { category: { select: { label: true } } }, orderBy: { serialNumber: "asc" } } },
+    include: {
+      visits: { include: { workOrder: { select: { id: true, code: true, status: true } } }, orderBy: { dueAt: "asc" } },
+      center: { select: { id: true, name: true } },
+      products: { include: { category: { select: { label: true } } }, orderBy: { serialNumber: "asc" } } },
   });
   if (!p) notFound();
   const st = effectiveQuoteStatus(p) as keyof typeof proposalStatus;
@@ -94,6 +100,43 @@ export default async function ProposalPage({ params }: { params: Promise<{ id: s
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          {p.visits.length > 0 && (
+            <Card>
+              <CardHeader
+                title="Contrato activo · revisiones"
+                icon={CalendarCheck}
+                subtitle={`Del ${formatDate(p.decidedAt)} al ${formatDate(contractEnd(p))} · ${p.visits.filter((v) => visitState(v).key === "done").length} de ${p.visits.length} hechas`}
+              />
+              <ul className="divide-y divide-slate-100">
+                {p.visits.map((v, i) => {
+                  const state = visitState(v);
+                  return (
+                    <li key={v.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
+                      <span className="w-8 text-sm text-slate-400">{i + 1}.</span>
+                      <div className="min-w-0 flex-1">
+                        {v.workOrder ? (
+                          <p className="font-medium text-slate-800">{formatDate(v.dueAt)}</p>
+                        ) : (
+                          <InlineForm action={rescheduleVisit.bind(null, v.id)} className="flex items-center gap-2">
+                            <input type="date" name="dueAt" defaultValue={toDateInput(v.dueAt)} aria-label="Fecha de la revisión" className="field max-w-44 lg:min-h-10" />
+                            <SubmitButton variant="secondary" icon={<Save className="size-4" />} className="min-h-11 px-3 text-sm lg:min-h-10">Cambiar</SubmitButton>
+                          </InlineForm>
+                        )}
+                      </div>
+                      <Badge tone={state.tone}>{state.label}</Badge>
+                      {v.workOrder && v.workOrder.status !== "CANCELLED" ? (
+                        <Link href={`/taller/${v.workOrder.id}`} className="font-mono text-sm text-teal-700 hover:underline">{v.workOrder.code}</Link>
+                      ) : (
+                        <form action={createVisitOrder.bind(null, v.id)}>
+                          <SubmitButton icon={<ClipboardPlus className="size-4" />} className="min-h-11 px-3 text-sm lg:min-h-10">Crear orden</SubmitButton>
+                        </form>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </Card>
+          )}
           <Card>
             <CardHeader title="Conceptos" icon={FileText} subtitle={p.billingPeriod === "ONE_OFF" ? "Importes con IVA aparte" : `Importes ${per}, IVA aparte`} />
             {p.intro && <p className="whitespace-pre-line border-b border-slate-100 px-5 py-4 text-slate-700">{p.intro}</p>}

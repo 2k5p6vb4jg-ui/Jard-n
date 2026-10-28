@@ -34,3 +34,10 @@ export async function getWorkOrderFormOptions(): Promise<WorkOrderFormOptions> {
   const centers = await getCentersForSelect();
   return { patients, products, technicians, defaultTaxRate: settings?.defaultTaxRate ?? 21, categories: lists.categories, services: lists.services, priorities: lists.priorities, centers };
 }
+
+export async function nextWorkOrderCode() {
+  const prefix = `OT-${new Date().getFullYear()}-`;
+  const last = await prisma.workOrder.findFirst({ where: { code: { startsWith: prefix } }, orderBy: { code: "desc" }, select: { code: true } });
+  const n = last ? Number(last.code.slice(prefix.length)) + 1 : 1;
+  return `${prefix}${String(n).padStart(4, "0")}`;
+}

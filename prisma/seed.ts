@@ -559,6 +559,39 @@ async function main() {
     issuedAt: daysAgo(21), validUntil: daysAhead(9), intro: "Revisión trimestral de las 6 grúas de traslado: comprobación de arnés, batería, actuador y frenos, con informe para inspección.",
   }, [{ description: "Revisión preventiva de grúa de traslado", quantity: 6, unit: "grúa", unitPriceCents: 2800 }, { description: "Desplazamiento", quantity: 1, unit: "visita", unitPriceCents: 2000 }]);
 
+  // Contrato de mantenimiento en vigor (centro de día, 2 grúas): 1.ª revisión hecha y la 2.ª atrasada unos días
+  const gruasCentro = [];
+  for (let k = 1; k <= 2; k++) {
+    gruasCentro.push(
+      await prisma.trackedProduct.create({
+        data: { serialNumber: `GR-ORION-${7700 + k}`, categoryId: eq("PATIENT_LIFT"), brand: "Invacare", model: "Orion", centerId: virgenCarmen.id, deliveredAt: daysAgo(900), warrantyMonths: 24, warrantyUntil: daysAgo(170) },
+      }),
+    );
+  }
+  const contrato = await proposal(3, {
+    centerId: virgenCarmen.id, kind: "MAINTENANCE", title: "Mantenimiento de grúas de traslado", status: "ACCEPTED", taxRate: 21, billingPeriod: "QUARTERLY",
+    durationMonths: 12, visitsPerYear: 4, issuedAt: daysAgo(110), validUntil: daysAgo(80), decidedAt: daysAgo(95),
+    products: { connect: gruasCentro.map((g) => ({ id: g.id })) },
+  }, [{ description: "Revisión preventiva de grúa de traslado", quantity: 2, unit: "grúa", unitPriceCents: 3000 }]);
+  const visitas = [0, 3, 6, 9].map((m) => addMonths(daysAgo(95), m));
+  for (const [i, dueAt] of visitas.entries()) {
+    let workOrderId: string | undefined;
+    if (i === 0) {
+      const wo = await prisma.workOrder.create({
+        data: {
+          code: code(), centerId: virgenCarmen.id, centerLink: "ORDERED", customerName: "Centro de Día Virgen del Carmen", equipmentCategoryId: eq("PATIENT_LIFT"),
+          equipmentModel: "2 equipos del contrato", serviceTypeId: sv("PREVENTIVE_MAINTENANCE"), priorityId: pr("NORMAL"), status: "DELIVERED",
+          reportedIssue: `Revisión preventiva del contrato ${contrato.number}.`, workDone: "Revisadas las 2 grúas: correcto.", laborMode: "FIXED", laborFixedCents: 0,
+          technicianId: tecLucia.id, receivedAt: dueAt, completedAt: dueAt, deliveredAt: dueAt,
+          statusHistory: { create: [{ toStatus: "RECEIVED", changedAt: dueAt }, { fromStatus: "READY", toStatus: "DELIVERED", changedAt: dueAt }] },
+        },
+      });
+      workOrderId = wo.id;
+      for (const g of gruasCentro) await prisma.productIntervention.create({ data: { productId: g.id, workOrderId: wo.id, type: "MAINTENANCE", date: dueAt, description: `${wo.code} · Revisión del contrato ${contrato.number}` } });
+    }
+    await prisma.maintenanceVisit.create({ data: { proposalId: contrato.id, dueAt, workOrderId } });
+  }
+
   // ── Histórico de 12 meses (para que las estadísticas tengan datos) ──────
   // Pseudoaleatorio con semilla fija: el resultado es siempre el mismo
   let seedN = 42;

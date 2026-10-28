@@ -27,6 +27,7 @@ import { formatDate } from "@/lib/dates";
 import { formatEUR } from "@/lib/money";
 import { billingPeriod, centerLink, centerStatusTone, proposalKind, proposalStatus } from "@/lib/labels";
 import { effectiveQuoteStatus } from "@/lib/quotes";
+import { contractEnd, visitState } from "@/lib/contracts";
 import { type ActivityRow, centerOpportunities, findLegacyOrders, orderActivity, revenueSplit, twelveMonthsAgo } from "@/lib/centers";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -82,7 +83,11 @@ export default async function CenterPage({ params }: { params: Promise<{ id: str
       orderBy: { deliveredAt: "desc" },
     }),
     findLegacyOrders(id),
-    prisma.centerProposal.findMany({ where: { centerId: id }, orderBy: { issuedAt: "desc" } }),
+    prisma.centerProposal.findMany({
+      where: { centerId: id },
+      include: { visits: { include: { workOrder: { select: { status: true } } }, orderBy: { dueAt: "asc" } } },
+      orderBy: { issuedAt: "desc" },
+    }),
   ]);
   if (!center) notFound();
   const opportunities = await centerOpportunities(id, activity);
@@ -191,12 +196,18 @@ export default async function CenterPage({ params }: { params: Promise<{ id: str
               <ul className="divide-y divide-slate-100">
                 {proposals.map((p) => {
                   const st = effectiveQuoteStatus(p) as keyof typeof proposalStatus;
+                  const nextVisit = p.visits.find((v) => visitState(v).key !== "done");
                   return (
                     <li key={p.id}>
                       <Link href={`/centros/${id}/propuestas/${p.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50">
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium text-slate-800">{p.title}</p>
                           <p className="text-xs text-slate-500"><span className="font-mono">{p.number}</span> · {proposalKind[p.kind].label} · {formatDate(p.issuedAt)}</p>
+                          {p.visits.length > 0 && (
+                            <p className={`text-xs font-medium ${nextVisit && visitState(nextVisit).key === "overdue" ? "text-rose-600" : "text-teal-700"}`}>
+                              Contrato hasta {formatDate(contractEnd(p))}{nextVisit ? ` · próxima revisión ${formatDate(nextVisit.dueAt)}` : " · revisiones completadas"}
+                            </p>
+                          )}
                         </div>
                         <div className="shrink-0 text-right">
                           <p className="text-sm font-medium text-slate-800">{formatEUR(p.totalCents)}{billingPeriod[p.billingPeriod].per && <span className="font-normal text-slate-500"> {billingPeriod[p.billingPeriod].per}</span>}</p>
