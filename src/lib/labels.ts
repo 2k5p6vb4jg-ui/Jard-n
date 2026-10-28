@@ -218,3 +218,10 @@ export const orderItemStatus: Record<import("@prisma/client").OrderItemStatus, {
 
 /** Formas habituales de hacer un pedido a una marca */
 export const ORDER_VIAS = ["Web / portal", "Email", "Teléfono", "Comercial", "WhatsApp"];
+
+export const appointmentStatus: Record<import("@prisma/client").AppointmentStatus, { label: string; tone: Tone }> = {
+  SCHEDULED: { label: "Pendiente", tone: "sky" },
+  DONE: { label: "Hecha", tone: "emerald" },
+  NO_SHOW: { label: "No vino", tone: "rose" },
+  CANCELLED: { label: "Anulada", tone: "slate" },
+};

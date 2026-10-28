@@ -80,6 +80,7 @@ src/
     taller/              Reparaciones: órdenes de trabajo por estado, detalle con costes
     plantillas/          Plantillas: listado con buscador, alta/edición, estado y cobro
     centros/             Centros (B2B): listado, ficha con historial, equipos, clientes y contactos
+    agenda/              Agenda: semana, dar cita, ficha de la cita con estado y recordatorio por WhatsApp
     pedidos/             Pedidos a marcas: por pedir, en camino, por entregar, historial y marcas
     configuracion/opciones/    Ajustes → Opciones: listas editables de Reparaciones y Plantillas
     trazabilidad/        Productos por nº de serie e histórico de intervenciones
@@ -88,7 +89,7 @@ src/
     api/uploads/[...]    Sirve adjuntos registrados (protegido contra path traversal)
   components/ui/         Card, Badge, Button (≥48 px táctil), PageHeader, EmptyState
   components/layout/     Barra lateral (escritorio) y barra inferior (móvil: Panel, Clientes, Reparaciones, Plantillas,
-                         Más: Pedidos, Centros, Trazabilidad, Estadísticas, Ajustes y Buscar)
+                         Más: Agenda, Pedidos, Centros, Trazabilidad, Estadísticas, Ajustes y Buscar)
   lib/
     prisma.ts            Cliente único de Prisma
     labels.ts            Etiquetas en castellano y colores de badge por enumerado
@@ -110,6 +111,8 @@ src/
   viendo en los registros antiguos. Los estados de reparación solo se renombran (su flujo lo fija la app).
 - **Reparaciones:** `WorkOrder` (flujo Entrada → Diagnóstico → Presupuestado → En reparación → Listo → Entregado),
   `WorkOrderPart`, `TimeEntry`, `WorkOrderStatusChange`, `Quote` (instantánea de importes para el PDF), `Technician`.
+- **Agenda:** `Appointment` (inicio, duración, tipo en `CatalogOption`, estado, cliente, centro, reparación o plantillas,
+  técnico).
 - **Trazabilidad:** `TrackedProduct` (nº de serie único, lote, UDI, garantía) y `ProductIntervention`.
 - **Sistema:** `Settings` (datos fiscales, tarifa/hora, IVA, plazos de renovación), `AuditLog`, `BackupRecord`.
 
@@ -146,6 +149,11 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
   prevista, estado, precio, pagado y observaciones; cambio de estado y de pago con un toque, aviso de «Retrasada».
   Tipos, materiales y estados se editan en **Ajustes → Opciones → Plantillas** (añadir, renombrar, ordenar,
   desactivar; un estado «final» saca el pedido de «En curso»).
+- **Agenda de citas:** vista por semanas (el domingo solo aparece si tiene algo), «Dar cita» con tipo, día, hora,
+  duración, quién atiende, dónde y cliente o centro. Cada cita se marca como hecha, «no vino» o anulada y tiene botón de
+  recordatorio por WhatsApp con el mensaje escrito. Las revisiones de contratos de mantenimiento aparecen en su día.
+  Las fichas de cliente, centro, plantillas y reparación muestran sus próximas citas y un enlace «Dar cita» ya rellenado;
+  el Panel muestra las citas de hoy. Los tipos de cita se editan en **Ajustes → Opciones → Agenda**.
 - **Pedidos a marcas** (Orliman, DJO, Prim, Sunrise…): se apunta qué hay que pedir, cuánto, para cuándo y **para quién**
   (cliente, centro, reparación, plantillas o stock). «Por pedir» lo agrupa por marca y «Marcar como pedido» crea el pedido
   (`PED-AAAA-NNNN`) con vía, nº de la marca y llegada prevista (según el plazo habitual de la marca). Recepción artículo a

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { UpcomingAppointments } from "@/components/agenda/UpcomingAppointments";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
@@ -394,6 +395,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
         <div className="space-y-6">
           {/* ── Piezas pedidas a marcas ────────────────────────────────── */}
           <LinkedItems items={order.orderItems} newHref={`/pedidos/apuntar?reparacion=${order.id}`} title="Piezas pedidas" />
+          <UpcomingAppointments where={{ workOrderId: order.id }} newHref={`/agenda/nueva?reparacion=${order.id}`} />
 
           {/* ── Costes ─────────────────────────────────────────────────── */}
           <Card>

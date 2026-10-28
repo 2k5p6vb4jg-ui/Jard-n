@@ -21,6 +21,7 @@ import {
   interventionType,
   prescriptionStatus,
   side,
+  appointmentStatus,
 } from "./labels";
 
 /** Todo lo que la app guarda de un paciente (derecho de acceso, art. 15 RGPD). */
@@ -39,6 +40,7 @@ export async function collectPatientData(patientId: string) {
       center: { select: { name: true } },
       orderItems: { select: { description: true, quantity: true, status: true, createdAt: true, supplier: { select: { name: true } } } },
       products: { include: { category: true, interventions: { orderBy: { date: "asc" } } } },
+      appointments: { include: { type: true }, orderBy: { startsAt: "asc" } },
     },
   });
 }
@@ -94,6 +96,10 @@ async function reportPdf(p: PatientData): Promise<Uint8Array> {
         ["Precio", o.priceCents != null ? `${formatEUR(o.priceCents)} (${o.paid ? "pagado" : "pendiente de pago"})` : ""],
         ["Observaciones", o.notes ?? ""],
       ]),
+    },
+    {
+      heading: "Citas",
+      rows: p.appointments.map((a) => [`${formatDate(a.startsAt)} ${a.startsAt.toTimeString().slice(0, 5)}`, [a.type.label, appointmentStatus[a.status].label, a.location, a.notes].filter(Boolean).join(" · ")] as [string, string]),
     },
     {
       heading: "Medias de compresión",

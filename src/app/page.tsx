@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { AlertTriangle, ArrowRight, BellRing, CalendarCheck, ClipboardPlus, Truck, Footprints, Plus, UserPlus, Wrench } from "lucide-react";
+import { AlertTriangle, ArrowRight, BellRing, CalendarCheck, CalendarDays, ClipboardPlus, Truck, Footprints, Plus, UserPlus, Wrench } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getRenewalAlerts } from "@/lib/renewals";
 import { formatDate } from "@/lib/dates";
@@ -17,6 +17,8 @@ import { SubmitButton } from "@/components/ui/Form";
 import { getDueVisits } from "@/lib/contracts";
 import { orderCounts } from "@/lib/orders";
 import { createVisitOrder } from "@/app/centros/propuestas";
+import { todaysAppointments } from "@/lib/appointments";
+import { AppointmentCard } from "@/components/agenda/AppointmentCard";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +46,7 @@ function Kpi({ href, label, value, hint, icon: Icon, tone = "plain" }: { href: s
 
 export default async function DashboardPage() {
   const today = new Date(new Date().setHours(0, 0, 0, 0));
-  const [alerts, byStatus, activeOrders, st, insoleOpts, openInsoles, lateOrders, dueVisits, orders, backup] = await Promise.all([
+  const [alerts, byStatus, activeOrders, st, insoleOpts, openInsoles, lateOrders, dueVisits, orders, backup, appointments] = await Promise.all([
     getRenewalAlerts(),
     prisma.workOrder.groupBy({ by: ["status"], _count: { _all: true } }),
     prisma.workOrder.findMany({
@@ -68,6 +70,7 @@ export default async function DashboardPage() {
     getDueVisits(14),
     orderCounts(),
     prisma.settings.findUnique({ where: { id: 1 }, select: { businessName: true, autoBackup: true, lastAutoBackupAt: true, backupMirrorDir: true, lastMirrorError: true } }),
+    todaysAppointments(),
   ]);
 
   const count = (s: string) => byStatus.find((b) => b.status === s)?._count._all ?? 0;
@@ -221,6 +224,20 @@ export default async function DashboardPage() {
         </div>
 
         <div className="space-y-6 xl:col-span-2">
+          <Card>
+            <CardHeader
+              title="Citas de hoy"
+              icon={CalendarDays}
+              action={<Link href="/agenda" className="inline-flex items-center gap-1 text-sm font-medium text-teal-700 hover:text-teal-800">Agenda <ArrowRight className="size-4" /></Link>}
+            />
+            {appointments.length === 0 ? (
+              <p className="px-5 py-4 text-sm text-slate-500">
+                Ninguna cita hoy. <Link href="/agenda/nueva" className="font-medium text-teal-700 hover:underline">Dar cita</Link>
+              </p>
+            ) : (
+              <div className="space-y-2 p-3">{appointments.map((a) => <AppointmentCard key={a.id} a={a} business={backup?.businessName ?? ""} />)}</div>
+            )}
+          </Card>
           {dueVisits.length > 0 && (
             <Card>
               <CardHeader title="Revisiones de contratos" icon={CalendarCheck} subtitle="Próximos 14 días y atrasadas" />

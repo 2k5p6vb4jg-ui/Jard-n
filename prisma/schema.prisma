@@ -252,6 +252,8 @@ model Patient {
 
   orderItems OrderItem[]
 
+  appointments Appointment[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -470,6 +472,8 @@ model Technician {
   timeEntries   TimeEntry[]
   interventions ProductIntervention[]
 
+  appointments Appointment[]
+
   createdAt DateTime @default(now())
 }
 
@@ -535,6 +539,8 @@ model WorkOrder {
   maintenanceVisit MaintenanceVisit?
 
   orderItems OrderItem[]
+
+  appointments Appointment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -644,6 +650,8 @@ enum OptionKind {
   // Centros
   CENTER_TYPE
   CENTER_STATUS
+  // Agenda
+  APPOINTMENT_TYPE
 }
 
 /// Relación de un pedido (reparación o plantillas) con un centro.
@@ -676,6 +684,7 @@ model CatalogOption {
   priorityOrders  WorkOrder[]      @relation("WorkOrderPriority")
   parts           WorkOrderPart[]
   products        TrackedProduct[]
+  appointments    Appointment[]
   centerTypes     Center[]         @relation("CenterType")
   centerStatuses  Center[]         @relation("CenterStatus")
 
@@ -718,6 +727,8 @@ model InsoleOrder {
   photos Photo[]
 
   orderItems OrderItem[]
+
+  appointments Appointment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -773,6 +784,8 @@ model Center {
   products     TrackedProduct[]
 
   orderItems OrderItem[]
+
+  appointments Appointment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -947,6 +960,46 @@ model PurchaseOrder {
   updatedAt DateTime @updatedAt
 
   @@index([supplierId])
+}
+
+// ----------------------------------------------------------------------------
+//  MÓDULO 2e · AGENDA
+// ----------------------------------------------------------------------------
+
+enum AppointmentStatus {
+  SCHEDULED
+  DONE
+  NO_SHOW // No vino
+  CANCELLED
+}
+
+/// Cita: toma de medidas, estudio de pisada, prueba, entrega, visita a un centro…
+model Appointment {
+  id          String            @id @default(cuid())
+  startsAt    DateTime
+  durationMin Int               @default(30)
+  typeId      String
+  type        CatalogOption     @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  status      AppointmentStatus @default(SCHEDULED)
+  location    String? // En la tienda, en el centro, a domicilio…
+  notes       String?
+
+  patientId     String?
+  patient       Patient?     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  centerId      String?
+  center        Center?      @relation(fields: [centerId], references: [id], onDelete: SetNull)
+  workOrderId   String?
+  workOrder     WorkOrder?   @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  insoleOrderId String?
+  insoleOrder   InsoleOrder? @relation(fields: [insoleOrderId], references: [id], onDelete: SetNull)
+  technicianId  String? // Quién atiende
+  technician    Technician?  @relation(fields: [technicianId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([startsAt])
+  @@index([patientId])
 }
 
 // ----------------------------------------------------------------------------

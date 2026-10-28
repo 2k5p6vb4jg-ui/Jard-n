@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { UpcomingAppointments } from "@/components/agenda/UpcomingAppointments";
 import Link from "next/link";
 import {
   Building2,
@@ -158,6 +159,8 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
             {patient.notes && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{patient.notes}</p>}
           </dl>
         </Card>
+
+        <UpcomingAppointments where={{ patientId: patient.id }} newHref={`/agenda/nueva?paciente=${patient.id}`} />
 
         <Card>
           <CardHeader title="Protección de datos" icon={ShieldCheck} subtitle="Derechos del paciente (RGPD)" />

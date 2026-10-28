@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { UpcomingAppointments } from "@/components/agenda/UpcomingAppointments";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
@@ -286,6 +287,8 @@ export default async function CenterPage({ params }: { params: Promise<{ id: str
               {!center.phone && !center.email && !center.address && !center.notes && <p className="text-sm text-slate-500">Sin datos de contacto.</p>}
             </div>
           </Card>
+
+          <UpcomingAppointments where={{ centerId: id }} newHref={`/agenda/nueva?centro=${id}`} />
 
           <Card>
             <CardHeader title="Personas de contacto" icon={Contact} />

@@ -33,6 +33,7 @@ async function reset() {
   await removeFiles([...docs.map((d) => d.storagePath), ...(logo?.logoPath ? [logo.logoPath] : [])]);
   // Orden inverso a las dependencias
   await prisma.auditLog.deleteMany();
+  await prisma.appointment.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.purchaseOrder.deleteMany();
   await prisma.supplier.deleteMany();
@@ -624,6 +625,30 @@ async function main() {
   });
   if (otGrua) await prisma.orderItem.create({ data: { description: "Actuador lineal grúa Birdie", reference: "1570339", quantity: 1, supplierId: (await prisma.supplier.findFirstOrThrow({ where: { name: "Invacare" } })).id, workOrderId: otGrua.id, patientId: francisco.id, centerId: naranjos.id, neededBy: daysAhead(1) } });
   await prisma.orderItem.create({ data: { description: "Plantilla base EVA 3 mm (plancha)", quantity: 4, supplierId: prim.id, notes: "Stock de taller" } });
+
+  // ── Agenda: citas de esta semana y la siguiente ─────────────────────────
+  const apptTypes = await prisma.catalogOption.findMany({ where: { kind: "APPOINTMENT_TYPE" }, orderBy: { sortOrder: "asc" } });
+  const apptType = (label: string) => (apptTypes.find((t) => t.label.startsWith(label)) ?? apptTypes[0])?.id;
+  const at = (days: number, h: number, m = 0) => {
+    const d = new Date(now.getTime() + days * DAY);
+    d.setHours(h, m, 0, 0);
+    return d;
+  };
+  if (apptTypes.length > 0) {
+    const firstInsoles = await prisma.insoleOrder.findFirst({ where: { patientId: javier.id }, select: { id: true } });
+    await prisma.appointment.createMany({
+      data: [
+        { startsAt: at(0, 10), durationMin: 45, typeId: apptType("Toma de medidas")!, patientId: mariaJose.id, technicianId: tecLucia.id, notes: "Traer el calzado habitual." },
+        { startsAt: at(0, 12, 30), durationMin: 30, typeId: apptType("Prueba")!, patientId: javier.id, insoleOrderId: firstInsoles?.id, technicianId: tecLucia.id },
+        { startsAt: at(0, 17), durationMin: 30, typeId: apptType("Entrega")!, patientId: antonio.id, workOrderId: pedirOT?.id },
+        { startsAt: at(-1, 11), durationMin: 30, typeId: apptType("Estudio")!, patientId: carmen.id, status: "DONE" },
+        { startsAt: at(-2, 16), durationMin: 30, typeId: apptType("Revisión")!, patientId: elena.id, status: "NO_SHOW" },
+        { startsAt: at(1, 9, 30), durationMin: 120, typeId: apptType("Visita a centro")!, centerId: naranjos.id, location: "Residencia Los Naranjos", technicianId: tecMario.id, notes: "Revisar grúas y sillas de la planta 2." },
+        { startsAt: at(2, 18), durationMin: 30, typeId: apptType("Estudio")!, patientId: lucia.id },
+        { startsAt: at(8, 10), durationMin: 45, typeId: apptType("Toma de medidas")!, patientId: francisco.id, centerId: naranjos.id, location: "Residencia Los Naranjos" },
+      ],
+    });
+  }
 
   // ── Histórico de 12 meses (para que las estadísticas tengan datos) ──────
   // Pseudoaleatorio con semilla fija: el resultado es siempre el mismo

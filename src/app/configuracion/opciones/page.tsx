@@ -14,7 +14,7 @@ export const metadata = { title: "Opciones" };
 
 type Section = { kind: OptionKind; title: string; icon: typeof Layers; subtitle: string; wide?: boolean };
 
-const TABS: Record<"reparaciones" | "plantillas" | "centros", { label: string; sections: Section[] }> = {
+const TABS: Record<"reparaciones" | "plantillas" | "centros" | "agenda", { label: string; sections: Section[] }> = {
   reparaciones: {
     label: "Reparaciones",
     sections: [
@@ -40,19 +40,23 @@ const TABS: Record<"reparaciones" | "plantillas" | "centros", { label: string; s
       { kind: "CENTER_STATUS", title: "Situación comercial", icon: Flag, subtitle: "Posible cliente, activo, inactivo…" },
     ],
   },
+  agenda: {
+    label: "Agenda",
+    sections: [{ kind: "APPOINTMENT_TYPE", title: "Tipos de cita", icon: Shapes, subtitle: "Toma de medidas, estudio de la pisada, entrega…" }],
+  },
 };
 
 const iconBtn = "grid size-11 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30";
 
 export default async function OptionsPage({ searchParams }: { searchParams: Promise<{ pestana?: string }> }) {
   const { pestana } = await searchParams;
-  const tab = pestana === "plantillas" || pestana === "centros" ? pestana : "reparaciones";
+  const tab = pestana === "plantillas" || pestana === "centros" || pestana === "agenda" ? pestana : "reparaciones";
   const { sections } = TABS[tab];
   const options = await prisma.catalogOption.findMany({
     where: { kind: { in: sections.map((x) => x.kind) } },
     orderBy: [{ sortOrder: "asc" }, { label: "asc" }],
     include: {
-      _count: { select: { typeOrders: true, materialOrders: true, statusOrders: true, equipmentOrders: true, serviceOrders: true, priorityOrders: true, parts: true, products: true, centerTypes: true, centerStatuses: true } },
+      _count: { select: { typeOrders: true, materialOrders: true, statusOrders: true, equipmentOrders: true, serviceOrders: true, priorityOrders: true, parts: true, products: true, centerTypes: true, centerStatuses: true, appointments: true } },
     },
   });
 

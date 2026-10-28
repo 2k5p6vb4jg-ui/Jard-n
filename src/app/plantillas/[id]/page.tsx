@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { UpcomingAppointments } from "@/components/agenda/UpcomingAppointments";
 import { notFound } from "next/navigation";
 import { Building2, Camera, Check, CircleDollarSign, Footprints, Pencil, Phone, Plus, RefreshCw, Trash2, User } from "lucide-react";
 import { prisma } from "@/lib/prisma";
@@ -119,6 +120,8 @@ export default async function InsoleOrderPage({ params }: { params: Promise<{ id
               <LinkButton href={`/plantillas/nueva?paciente=${p.id}`} variant="secondary" icon={Plus} className="mt-2 w-full">Otras plantillas para este cliente</LinkButton>
             </div>
           </Card>
+
+          <UpcomingAppointments where={{ insoleOrderId: order.id }} newHref={`/agenda/nueva?plantilla=${order.id}`} />
 
           <LinkedItems items={order.orderItems} newHref={`/pedidos/apuntar?plantilla=${order.id}`} title="Material pedido" />
 

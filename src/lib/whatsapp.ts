@@ -34,5 +34,7 @@ export const messages = {
   orderArrived: (name: string | null, item: string, business: string) => `${hello(name)} Le escribimos de ${business}: ya ha llegado su pedido (${item}). Puede pasar a recogerlo cuando quiera.`,
   renewal: (name: string | null, what: string, business: string) =>
     `${hello(name)} Le escribimos de ${business}: ya toca revisar o renovar sus ${what.toLowerCase()}. ¿Quiere que le demos cita?`,
+  appointment: (name: string | null, what: string, when: string, business: string) =>
+    `${hello(name)} Le recordamos su cita en ${business} (${what.toLowerCase()}) el ${when}. Si no puede venir, avísenos por favor.`,
   generic: (name: string | null, business: string) => `${hello(name)} Le escribimos de ${business}.`,
 };
