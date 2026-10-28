@@ -111,14 +111,15 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
   return (
     <>
       <Link href="/taller" className="mb-3 inline-flex min-h-10 items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-700">
-        <ArrowLeft className="size-4" /> Taller
+        <ArrowLeft className="size-4" /> Reparaciones
       </Link>
       <PageHeader
-        title={`${order.code} · ${order.equipmentCategory.label}`}
-        description={[order.equipmentBrand, order.equipmentModel, order.serialNumber && `S/N ${order.serialNumber}`].filter(Boolean).join(" · ")}
+        eyebrow={<span className="font-mono normal-case tracking-normal">{order.code}</span>}
+        title={order.equipmentCategory.label}
+        description={[order.equipmentBrand, order.equipmentModel, order.serialNumber && `S/N ${order.serialNumber}`].filter(Boolean).join(" · ") || order.serviceType.label}
         actions={
           <>
-            <a href={`/api/taller/${id}/resguardo`} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-5 font-medium text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
+            <a href={`/api/taller/${id}/resguardo`} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-5 font-medium text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 hover:ring-slate-400 lg:min-h-11 lg:px-4 lg:text-[15px]">
               <Printer className="size-5" /> Resguardo
             </a>
             <LinkButton href={`/taller/${id}/editar`} variant="secondary" icon={Pencil}>Editar</LinkButton>
@@ -126,21 +127,61 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
         }
       />
 
+      {/* ── Resumen ────────────────────────────────────────────────────── */}
+      <Card className="mb-6 grid grid-cols-2 divide-slate-100 sm:grid-cols-3 lg:grid-cols-5 lg:divide-x">
+        <div className="col-span-2 border-b border-slate-100 p-4 sm:col-span-1 sm:border-b-0 lg:px-5">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Cliente</p>
+          {order.patient ? (
+            <Link href={`/pacientes/${order.patient.id}`} className="mt-1 block truncate font-semibold text-teal-700 hover:underline">{order.patient.firstName} {order.patient.lastName}</Link>
+          ) : (
+            <p className="mt-1 truncate font-semibold text-slate-900">{order.customerName}</p>
+          )}
+          {(order.patient?.phone ?? order.customerPhone) && <p className="truncate text-sm text-slate-500">{order.patient?.phone ?? order.customerPhone}</p>}
+        </div>
+        <div className="p-4 lg:px-5">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Estado</p>
+          <p className="mt-1.5 flex flex-wrap gap-1.5">
+            <Badge tone={workOrderStatus[order.status].tone}>{st[order.status]}</Badge>
+            {order.priority.key !== "NORMAL" && <Badge tone={priorityTone(order.priority.key)}>{order.priority.label}</Badge>}
+            {order.underWarranty && <Badge tone="gold">Garantía</Badge>}
+          </p>
+        </div>
+        <div className="p-4 lg:px-5">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Entrada · Compromiso</p>
+          <p className="mt-1 font-medium text-slate-800">
+            {formatDate(order.receivedAt)} · <span className={!closed && order.promisedAt && order.promisedAt < new Date(new Date().setHours(0, 0, 0, 0)) ? "text-rose-600" : ""}>{formatDate(order.promisedAt)}</span>
+          </p>
+        </div>
+        <div className="p-4 lg:px-5">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Técnico</p>
+          <p className="mt-1 truncate font-medium text-slate-800">{order.technician?.name ?? "Sin asignar"}</p>
+        </div>
+        <div className="p-4 lg:px-5">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Total</p>
+          <p className="mt-0.5 text-2xl font-semibold tracking-tight text-slate-900">{formatEUR(totals.totalCents)}</p>
+        </div>
+      </Card>
+
       {/* ── Estado ─────────────────────────────────────────────────────── */}
       <Card className="mb-6 p-5">
-        <ol className="mb-5 grid grid-cols-3 gap-2 sm:grid-cols-6">
+        <ol className="-mx-1 mb-5 flex overflow-x-auto px-1 pb-1">
           {WORK_ORDER_FLOW.map((s, i) => {
             const done = idx > i || order.status === "DELIVERED";
             const current = s === order.status;
             return (
-              <li
-                key={s}
-                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${
-                  current ? "bg-teal-600 text-white" : done ? "bg-teal-50 text-teal-700" : "bg-slate-50 text-slate-400"
-                }`}
-              >
-                {done && !current ? <Check className="size-4 shrink-0" /> : <span className="grid size-4 shrink-0 place-items-center text-xs">{i + 1}</span>}
-                <span className="truncate">{st[s]}</span>
+              <li key={s} className="flex min-w-24 flex-1 flex-col items-center gap-2 text-center">
+                <div className="flex w-full items-center">
+                  <span className={`h-0.5 flex-1 ${i === 0 ? "invisible" : done || current ? "bg-teal-600" : "bg-slate-200"}`} />
+                  <span
+                    className={`grid size-8 shrink-0 place-items-center rounded-full text-sm font-semibold ${
+                      current ? "bg-teal-600 text-gold-300 ring-4 ring-teal-600/15" : done ? "bg-teal-600 text-white" : "bg-slate-100 text-slate-400"
+                    }`}
+                  >
+                    {done && !current ? <Check className="size-4" /> : i + 1}
+                  </span>
+                  <span className={`h-0.5 flex-1 ${i === WORK_ORDER_FLOW.length - 1 ? "invisible" : done ? "bg-teal-600" : "bg-slate-200"}`} />
+                </div>
+                <span className={`px-1 text-xs font-medium sm:text-sm ${current ? "text-teal-700" : done ? "text-slate-700" : "text-slate-400"}`}>{st[s]}</span>
               </li>
             );
           })}
@@ -193,10 +234,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
               icon={Wrench}
               subtitle={order.patient ? `${order.patient.firstName} ${order.patient.lastName}` : [order.customerName, order.customerPhone].filter(Boolean).join(" · ")}
               action={
-                <div className="flex flex-wrap justify-end gap-1.5">
-                  {order.priority.key !== "NORMAL" && <Badge tone={priorityTone(order.priority.key)}>{order.priority.label}</Badge>}
-                  {order.underWarranty && <Badge tone="indigo">Garantía</Badge>}
-                </div>
+                order.underWarranty ? <Badge tone="gold">Garantía</Badge> : undefined
               }
             />
             <dl className="grid gap-4 px-5 py-4 sm:grid-cols-2">
@@ -204,9 +242,6 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
               {order.diagnosis && <div className="sm:col-span-2"><dt className="text-sm text-slate-500">Diagnóstico</dt><dd className="text-slate-800">{order.diagnosis}</dd></div>}
               {order.workDone && <div className="sm:col-span-2"><dt className="text-sm text-slate-500">Trabajo realizado</dt><dd className="text-slate-800">{order.workDone}</dd></div>}
               {order.internalNotes && <div className="sm:col-span-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{order.internalNotes}</div>}
-              <div><dt className="text-sm text-slate-500">Entrada</dt><dd>{formatDate(order.receivedAt)}</dd></div>
-              <div><dt className="text-sm text-slate-500">Fecha comprometida</dt><dd>{formatDate(order.promisedAt)}</dd></div>
-              <div><dt className="text-sm text-slate-500">Técnico</dt><dd>{order.technician?.name ?? "Sin asignar"}</dd></div>
               {order.accessories && <div><dt className="text-sm text-slate-500">Accesorios</dt><dd>{order.accessories}</dd></div>}
               {order.product && (
                 <div className="sm:col-span-2">

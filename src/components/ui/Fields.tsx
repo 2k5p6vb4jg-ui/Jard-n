@@ -4,11 +4,11 @@ import type { LucideIcon } from "lucide-react";
 /** Bloque de formulario con título (tarjeta) */
 export function FormSection({ title, icon: Icon, description, children }: { title: string; icon?: LucideIcon; description?: string; children: ReactNode }) {
   return (
-    <fieldset className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <fieldset className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-card">
       <legend className="sr-only">{title}</legend>
       <div className="mb-4 flex items-center gap-3">
         {Icon && (
-          <span className="grid size-9 place-items-center rounded-lg bg-teal-50 text-teal-600">
+          <span className="grid size-8 place-items-center rounded-lg bg-teal-50 text-teal-700">
             <Icon className="size-5" />
           </span>
         )}

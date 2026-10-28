@@ -6,12 +6,22 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { cookieOptions, createSessionToken, hashPin, invalidateAuthCache, isValidPin, SESSION_COOKIE, verifyPin } from "@/lib/auth";
 import { createBackupFile } from "@/lib/backup";
+import { DEFAULT_COLORS, isHexColor } from "@/lib/branding.colors";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import { deleteUpload, saveLogo } from "@/lib/storage";
 import { type ActionState, bool, cents, FormError, handle, int, num, required, str } from "@/lib/forms";
 
 const refreshAll = () => revalidatePath("/", "layout");
+
+function colors(fd: FormData) {
+  const pick = (k: string) => {
+    const v = str(fd, k);
+    if (v && !isHexColor(v)) throw new FormError("Color no válido.");
+    return v?.toUpperCase() ?? undefined;
+  };
+  return { brandColor: pick("brandColor"), accentColor: pick("accentColor"), darkColor: pick("darkColor") };
+}
 
 function inRange(v: number | null, min: number, max: number, label: string): number | undefined {
   if (v === null) return undefined;
@@ -42,6 +52,7 @@ export async function saveSettings(_prev: ActionState, fd: FormData): Promise<Ac
       insoleRenewalMonths: inRange(int(fd, "insoleRenewalMonths"), 1, 60, "Renovación de plantillas"),
       stockingRenewalMonths: inRange(int(fd, "stockingRenewalMonths"), 1, 60, "Renovación de medias"),
       renewalWarningDays: inRange(int(fd, "renewalWarningDays"), 0, 180, "Días de antelación del aviso"),
+      ...(bool(fd, "resetColors") ? DEFAULT_COLORS : colors(fd)),
     };
     await prisma.settings.upsert({ where: { id: 1 }, update: data, create: { id: 1, ...data } });
     await audit("UPDATE", "Settings", "1");

@@ -10,11 +10,12 @@ const tones: Record<Tone, string> = {
   rose: "bg-rose-50 text-rose-700 ring-rose-200",
   emerald: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   violet: "bg-violet-50 text-violet-700 ring-violet-200",
+  gold: "bg-gold-50 text-gold-800 ring-gold-200",
 };
 
 export function Badge({ tone = "slate", children }: { tone?: Tone; children: ReactNode }) {
   return (
-    <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${tones[tone]}`}>
+    <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${tones[tone]}`}>
       {children}
     </span>
   );

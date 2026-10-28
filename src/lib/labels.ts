@@ -13,7 +13,7 @@ import type {
 } from "@prisma/client";
 
 /** Tonos de badge disponibles (ver components/ui/Badge.tsx) */
-export type Tone = "slate" | "teal" | "indigo" | "sky" | "amber" | "rose" | "emerald" | "violet";
+export type Tone = "slate" | "teal" | "indigo" | "sky" | "amber" | "rose" | "emerald" | "violet" | "gold";
 
 /** Color de cada estado de reparación. El nombre visible se edita en Ajustes → Opciones (ver getStatusLabels). */
 export const workOrderStatus: Record<WorkOrderStatus, { label: string; tone: Tone }> = {

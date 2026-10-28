@@ -6,14 +6,14 @@ type Variant = "primary" | "secondary" | "ghost" | "danger";
 
 const variants: Record<Variant, string> = {
   primary: "bg-teal-600 text-white hover:bg-teal-700 shadow-sm",
-  secondary: "bg-white text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 shadow-sm",
+  secondary: "bg-white text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 hover:ring-slate-400",
   ghost: "text-slate-600 hover:bg-slate-100",
   danger: "bg-rose-600 text-white hover:bg-rose-700 shadow-sm",
 };
 
-// Altura mínima 48px: cómodo con guantes / dedo en la mesa del taller.
+// Altura mínima 48px: cómodo con guantes / dedo en la mesa del taller (algo más compacto con ratón).
 const base =
-  "inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-base font-medium transition " +
+  "inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-base font-medium transition lg:min-h-11 lg:px-4 lg:text-[15px] " +
   "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-500/30 disabled:opacity-50 active:scale-[0.98]";
 
 interface Common {

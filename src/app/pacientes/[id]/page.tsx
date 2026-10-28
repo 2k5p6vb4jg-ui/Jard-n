@@ -62,7 +62,7 @@ function RenewalBadge({ kind, id, status, delivered }: { kind: "INSOLE" | "STOCK
       <Badge tone={renewalStatus[status].tone}>{renewalStatus[status].label}</Badge>
       {status === "DISMISSED" && (
         <form action={updateRenewal.bind(null, kind, id, "REOPEN")}>
-          <SubmitButton icon={<RotateCcw className="size-3.5" />} variant="secondary" className="min-h-8 px-2 text-xs shadow-none">Reactivar aviso</SubmitButton>
+          <SubmitButton icon={<RotateCcw className="size-3.5" />} variant="secondary" className="min-h-8 px-2 text-xs shadow-none lg:min-h-8">Reactivar aviso</SubmitButton>
         </form>
       )}
     </span>

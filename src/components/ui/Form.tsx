@@ -32,7 +32,7 @@ export function ActionForm({
       {state?.error && <ErrorBanner message={state.error} />}
       {children}
       {state?.error && <ErrorBanner message={state.error} />}
-      <div className="sticky bottom-[4.5rem] z-30 flex gap-2 rounded-xl border border-slate-200 bg-white/95 p-2 shadow-sm backdrop-blur sm:justify-end sm:p-3 lg:bottom-4">
+      <div className="sticky bottom-[4.5rem] z-30 flex gap-2 rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-lift backdrop-blur sm:justify-end sm:p-3 lg:bottom-4">
         {state?.ok && (
           <p role="status" className="mr-auto flex items-center gap-2 px-2 text-sm font-medium text-emerald-700">
             <CheckCircle2 className="size-5" />
@@ -40,7 +40,7 @@ export function ActionForm({
           </p>
         )}
         {cancelHref && (
-          <a href={cancelHref} className="inline-flex min-h-12 items-center justify-center rounded-xl px-5 font-medium text-slate-600 hover:bg-slate-100">
+          <a href={cancelHref} className="inline-flex min-h-12 items-center justify-center rounded-xl px-5 font-medium text-slate-600 hover:bg-slate-100 lg:min-h-11">
             Cancelar
           </a>
         )}
@@ -95,8 +95,8 @@ export function SubmitButton({
   const ctxPending = useContext(FormPending);
   const pending = pendingProp ?? (ctxPending || status.pending);
   const styles = {
-    primary: "bg-teal-600 text-white hover:bg-teal-700",
-    secondary: "bg-white text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50",
+    primary: "bg-teal-600 text-white shadow-sm hover:bg-teal-700",
+    secondary: "bg-white text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 hover:ring-slate-400",
     danger: "bg-rose-600 text-white hover:bg-rose-700",
   }[variant];
   return (
@@ -105,7 +105,7 @@ export function SubmitButton({
       name={name}
       value={value}
       disabled={pending}
-      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-6 text-base font-medium shadow-sm transition active:scale-[0.98] disabled:opacity-60 ${styles} ${className}`}
+      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-6 text-base font-medium transition active:scale-[0.98] disabled:opacity-60 lg:min-h-11 lg:px-5 lg:text-[15px] ${styles} ${className}`}
     >
       {pending ? <Loader2 className="size-5 animate-spin" /> : icon}
       {children}

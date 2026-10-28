@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <section className={`rounded-xl border border-slate-200 bg-white shadow-sm ${className}`}>{children}</section>;
+  return <section className={`rounded-2xl border border-slate-200/80 bg-white shadow-card ${className}`}>{children}</section>;
 }
 
 export function CardHeader({
@@ -17,15 +17,15 @@ export function CardHeader({
   subtitle?: string;
 }) {
   return (
-    <header className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+    <header className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-3.5">
       <div className="flex items-center gap-3">
         {Icon && (
-          <span className="grid size-9 place-items-center rounded-lg bg-teal-50 text-teal-600">
-            <Icon className="size-5" />
+          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-teal-50 text-teal-700">
+            <Icon className="size-[18px]" />
           </span>
         )}
         <div>
-          <h2 className="font-semibold text-slate-800">{title}</h2>
+          <h2 className="font-semibold tracking-tight text-slate-900">{title}</h2>
           {subtitle && <p className="text-sm text-slate-500">{subtitle}</p>}
         </div>
       </div>

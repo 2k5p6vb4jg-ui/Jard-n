@@ -1,4 +1,4 @@
-import { BarChart3, BellRing, Building2, DatabaseBackup, ListChecks, ScanBarcode, FolderDown, HardDriveDownload, ImageIcon, Info, KeyRound, Lock, Plus, Receipt, Save, ScrollText, ShieldAlert, Trash2, Users } from "lucide-react";
+import { BarChart3, BellRing, Palette, Building2, DatabaseBackup, ListChecks, ScanBarcode, FolderDown, HardDriveDownload, ImageIcon, Info, KeyRound, Lock, Plus, Receipt, Save, ScrollText, ShieldAlert, Trash2, Users } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { toEurosInput } from "@/lib/forms";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -59,6 +59,24 @@ export default async function SettingsPage() {
               <TextField name="phone" label="Teléfono" type="tel" inputMode="tel" defaultValue={settings?.phone} />
               <TextField name="email" label="Email" type="email" inputMode="email" defaultValue={settings?.email} />
               <TextField name="website" label="Web" defaultValue={settings?.website} />
+            </FormSection>
+
+            <FormSection title="Identidad visual" icon={Palette} description="Colores de la app. El logo se sube en la tarjeta «Logo».">
+              {[
+                { name: "brandColor", label: "Color principal", hint: "Botones, enlaces y elementos activos", value: settings?.brandColor },
+                { name: "accentColor", label: "Color de acento", hint: "Detalles destacados (dorado)", value: settings?.accentColor },
+                { name: "darkColor", label: "Tono oscuro", hint: "Barra lateral y cabecera del móvil", value: settings?.darkColor },
+              ].map((c) => (
+                <div key={c.name}>
+                  <label htmlFor={c.name} className="field-label">{c.label}</label>
+                  <input id={c.name} name={c.name} type="color" defaultValue={(c.value ?? "#000000").toLowerCase()} className="block h-12 w-full cursor-pointer rounded-xl border border-slate-300 bg-white p-1.5" />
+                  <p className="mt-1 text-xs text-slate-500">{c.hint}</p>
+                </div>
+              ))}
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600 sm:col-span-2 lg:col-span-3">
+                <input type="checkbox" name="resetColors" className="size-5 accent-teal-600" />
+                Volver a los colores originales (verde, dorado y antracita)
+              </label>
             </FormSection>
 
             <FormSection title="Taller y presupuestos" icon={Receipt}>

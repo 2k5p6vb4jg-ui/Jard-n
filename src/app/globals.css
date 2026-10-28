@@ -1,29 +1,84 @@
 @import "tailwindcss";
 
-@theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-}
-
+/*
+ * Identidad visual. Los tres colores de marca se editan en Ajustes → Identidad visual y el layout
+ * los inyecta en :root; aquí solo están los valores por defecto. Toda la app usa:
+ *   teal-*  → color principal (escala generada a partir de --brand)
+ *   gold-*  → color de acento (a partir de --accent)
+ *   ink-*   → tono oscuro de la barra lateral (a partir de --dark)
+ *   slate-* → grises neutros cálidos (combinan con el verde y el dorado)
+ */
 :root {
   color-scheme: light;
+  --brand: #1e5a46;
+  --accent: #c5a059;
+  --dark: #25282b;
+}
+
+@theme inline {
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --color-teal-50: color-mix(in oklab, var(--brand) 6%, white);
+  --color-teal-100: color-mix(in oklab, var(--brand) 12%, white);
+  --color-teal-200: color-mix(in oklab, var(--brand) 24%, white);
+  --color-teal-300: color-mix(in oklab, var(--brand) 42%, white);
+  --color-teal-400: color-mix(in oklab, var(--brand) 64%, white);
+  --color-teal-500: color-mix(in oklab, var(--brand) 84%, white);
+  --color-teal-600: var(--brand);
+  --color-teal-700: color-mix(in oklab, var(--brand) 84%, black);
+  --color-teal-800: color-mix(in oklab, var(--brand) 68%, black);
+  --color-teal-900: color-mix(in oklab, var(--brand) 52%, black);
+
+  --color-gold-50: color-mix(in oklab, var(--accent) 8%, white);
+  --color-gold-100: color-mix(in oklab, var(--accent) 16%, white);
+  --color-gold-200: color-mix(in oklab, var(--accent) 32%, white);
+  --color-gold-300: color-mix(in oklab, var(--accent) 55%, white);
+  --color-gold-400: color-mix(in oklab, var(--accent) 80%, white);
+  --color-gold-500: var(--accent);
+  --color-gold-600: color-mix(in oklab, var(--accent) 85%, black);
+  --color-gold-700: color-mix(in oklab, var(--accent) 68%, black);
+  --color-gold-800: color-mix(in oklab, var(--accent) 50%, black);
+
+  --color-ink-600: color-mix(in oklab, var(--dark) 72%, white);
+  --color-ink-700: color-mix(in oklab, var(--dark) 86%, white);
+  --color-ink-800: color-mix(in oklab, var(--dark) 93%, white);
+  --color-ink-900: var(--dark);
+  --color-ink-950: color-mix(in oklab, var(--dark) 80%, black);
+
+  /* Grises cálidos (escala «stone») en lugar de los azulados por defecto */
+  --color-slate-50: oklch(98.5% 0.001 106.423);
+  --color-slate-100: oklch(97% 0.001 106.424);
+  --color-slate-200: oklch(92.3% 0.003 48.717);
+  --color-slate-300: oklch(86.9% 0.005 56.366);
+  --color-slate-400: oklch(70.9% 0.01 56.259);
+  --color-slate-500: oklch(55.3% 0.013 58.071);
+  --color-slate-600: oklch(44.4% 0.011 73.639);
+  --color-slate-700: oklch(37.4% 0.01 67.558);
+  --color-slate-800: oklch(26.8% 0.007 34.298);
+  --color-slate-900: oklch(21.6% 0.006 56.043);
+  --color-slate-950: oklch(14.7% 0.004 49.25);
+
+  --shadow-card: 0 1px 2px rgb(28 25 23 / 0.04), 0 1px 1px rgb(28 25 23 / 0.02);
+  --shadow-lift: 0 10px 30px -12px rgb(28 25 23 / 0.18);
 }
 
 body {
-  @apply bg-slate-50 text-slate-800 antialiased;
+  @apply bg-[#f5f4f1] text-slate-800 antialiased;
+  font-feature-settings: "cv11", "ss01";
 }
 
-/* Objetivos táctiles cómodos en tablet/móvil */
+/* Objetivos táctiles cómodos en tablet/móvil; algo más compactos con ratón */
 @layer components {
   .touch-target {
     @apply min-h-12 min-w-12;
   }
   .field {
     @apply block w-full min-h-12 rounded-xl border border-slate-300 bg-white px-4 text-base text-slate-800
-      shadow-sm outline-none transition placeholder:text-slate-400
-      focus:border-teal-500 focus:ring-4 focus:ring-teal-500/15;
+      outline-none transition placeholder:text-slate-400 lg:min-h-11 lg:text-[15px]
+      focus:border-teal-600 focus:ring-4 focus:ring-teal-600/12;
   }
   .field-label {
-    @apply mb-1.5 block text-sm font-medium text-slate-600;
+    @apply mb-1.5 block text-[13px] font-medium text-slate-600;
   }
 }
 

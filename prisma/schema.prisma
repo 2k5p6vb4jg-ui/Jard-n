@@ -198,6 +198,10 @@ model Settings {
   phone                  String?
   email                  String?
   website                String?
+  /// Identidad visual (editable en Ajustes): color principal, acento y tono oscuro de la barra lateral
+  brandColor             String    @default("#1E5A46")
+  accentColor            String    @default("#C5A059")
+  darkColor              String    @default("#25282B")
   logoPath               String?
   defaultHourlyRateCents Int       @default(3500)
   defaultTaxRate         Float     @default(21) // IVA %
