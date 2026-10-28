@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Lock, Search, ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import { BarChart3, LayoutGrid, Lock, Search, ShieldCheck, X } from "lucide-react";
 import { lock } from "@/app/acceso/actions";
 import { NAV } from "./nav";
 import { BrandMark } from "./BrandMark";
@@ -72,27 +73,76 @@ export function Sidebar({ businessName, logoUrl, hasPin }: { businessName: strin
 }
 
 /** Barra inferior (móvil / tablet vertical) */
-export function BottomNav() {
+export function BottomNav({ hasPin }: { hasPin: boolean }) {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  // Al cambiar de página se cierra el panel
+  useEffect(() => setOpen(false), [pathname]);
   if (pathname === "/acceso") return null;
+  const more = NAV.filter((n) => !n.mobile);
+  const moreActive = more.some((n) => isActive(pathname, n.href)) || pathname === "/buscar";
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
-      {NAV.filter((n) => n.mobile).map(({ href, label, icon: Icon }) => {
-        const active = isActive(pathname, href);
-        return (
-          <Link
-            key={href}
-            href={href}
-            aria-current={active ? "page" : undefined}
-            className={`relative flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium ${active ? "text-teal-700" : "text-slate-500"}`}
-          >
-            {active && <span className="absolute inset-x-5 top-0 h-0.5 rounded-b-full bg-gold-500" aria-hidden />}
-            <Icon className="size-6" />
-            {label}
-          </Link>
-        );
-      })}
-    </nav>
+    <>
+      {open && (
+        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Más secciones">
+          <button type="button" aria-label="Cerrar" onClick={() => setOpen(false)} className="absolute inset-0 bg-ink-950/50" />
+          <div className="absolute inset-x-0 bottom-0 rounded-t-3xl bg-white px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-3 shadow-lift">
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200" aria-hidden />
+            <div className="grid grid-cols-3 gap-2">
+              {[...more, { href: "/buscar", label: "Buscar", icon: Search }].map(({ href, label, icon: Icon }) => {
+                const active = isActive(pathname, href);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    className={`flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-2xl text-sm font-medium transition ${active ? "bg-teal-50 text-teal-700" : "bg-slate-50 text-slate-700 active:bg-slate-100"}`}
+                  >
+                    <Icon className={`size-6 ${active ? "" : "text-teal-700"}`} />
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
+            {hasPin && (
+              <form action={lock} className="mt-3">
+                <button type="submit" className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl font-medium text-slate-600 ring-1 ring-inset ring-slate-200">
+                  <Lock className="size-5" />
+                  Bloquear este dispositivo
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+      <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+        {NAV.filter((n) => n.mobile).map(({ href, label, icon: Icon }) => {
+          const active = isActive(pathname, href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={`relative flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium ${active ? "text-teal-700" : "text-slate-500"}`}
+            >
+              {active && <span className="absolute inset-x-5 top-0 h-0.5 rounded-b-full bg-gold-500" aria-hidden />}
+              <Icon className="size-6" />
+              {label}
+            </Link>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          className={`relative flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium ${open || moreActive ? "text-teal-700" : "text-slate-500"}`}
+        >
+          {moreActive && !open && <span className="absolute inset-x-5 top-0 h-0.5 rounded-b-full bg-gold-500" aria-hidden />}
+          {open ? <X className="size-6" /> : <LayoutGrid className="size-6" />}
+          Más
+        </button>
+      </nav>
+    </>
   );
 }
 

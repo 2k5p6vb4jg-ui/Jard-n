@@ -47,7 +47,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </main>
           </div>
         </div>
-        <BottomNav />
+        <BottomNav hasPin={!!settings?.pinHash} />
         <ServiceWorker />
       </body>
     </html>

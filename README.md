@@ -88,7 +88,7 @@ src/
     api/uploads/[...]    Sirve adjuntos registrados (protegido contra path traversal)
   components/ui/         Card, Badge, Button (≥48 px táctil), PageHeader, EmptyState
   components/layout/     Barra lateral (escritorio) y barra inferior (móvil: Panel, Clientes, Reparaciones, Plantillas,
-                         Ajustes; Trazabilidad y Estadísticas se abren desde Ajustes)
+                         Más: Pedidos, Centros, Trazabilidad, Estadísticas, Ajustes y Buscar)
   lib/
     prisma.ts            Cliente único de Prisma
     labels.ts            Etiquetas en castellano y colores de badge por enumerado
