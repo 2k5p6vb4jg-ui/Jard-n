@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { ensureDailyBackup } from "@/lib/backup";
 import { ensureSettings } from "@/lib/settings";
 import { BottomNav, MobileHeader, Sidebar } from "@/components/layout/Navigation";
+import { ServiceWorker } from "@/components/layout/ServiceWorker";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,8 @@ export const metadata: Metadata = {
   title: { default: "Jardón Ortopedia", template: "%s · Jardón Ortopedia" },
   description: "Jardón Ortopedia · Gestión clínica y de taller (uso local).",
   robots: { index: false, follow: false },
+  appleWebApp: { capable: true, title: "Jardón", statusBarStyle: "black-translucent" },
+  icons: { icon: "/api/icono?t=64", apple: "/api/icono?t=180" },
 };
 
 export async function generateViewport(): Promise<Viewport> {
@@ -45,6 +48,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </div>
         </div>
         <BottomNav />
+        <ServiceWorker />
       </body>
     </html>
   );

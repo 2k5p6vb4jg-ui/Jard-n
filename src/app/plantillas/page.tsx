@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Cell, chipClass, Row, RowLink, Table } from "@/components/ui/Table";
 
 export const metadata = { title: "Plantillas" };
 
@@ -31,13 +32,15 @@ export default async function InsoleOrdersPage({ searchParams }: { searchParams:
     ? rows.filter((o) => m(o.code, o.patient.firstName, o.patient.lastName, o.patient.phone, o.patient.dni, o.type.label, o.material?.label, o.notes))
     : rows;
 
+  const today = new Date(new Date().setHours(0, 0, 0, 0));
+  const isLate = (o: (typeof orders)[number]) => !o.status.isFinal && !!o.dueAt && o.dueAt < today;
+  const detail = (o: (typeof orders)[number]) =>
+    [o.type.label, `pie ${side[o.side].toLowerCase()}`, o.shoeSize != null && `nº ${o.shoeSize.toLocaleString("es-ES")}`, o.material?.label].filter(Boolean).join(" · ");
   const chip = (value: string, label: string, active: boolean) => (
     <Link
       key={value || "curso"}
       href={{ pathname: "/plantillas", query: { ...(value && { estado: value }), ...(q && { q }) } }}
-      className={`flex min-h-11 items-center whitespace-nowrap rounded-full px-4 text-sm font-medium ring-1 ring-inset transition ${
-        active ? "bg-teal-600 text-white ring-teal-600" : "bg-white text-slate-600 ring-slate-200 hover:bg-slate-50"
-      }`}
+      className={chipClass(active)}
     >
       {label}
     </Link>
@@ -64,33 +67,51 @@ export default async function InsoleOrdersPage({ searchParams }: { searchParams:
         {orders.length === 0 ? (
           <EmptyState icon={Footprints} title={q.trim() ? `Sin resultados para «${q}»` : "No hay plantillas en este estado"} />
         ) : (
-          <ul className="divide-y divide-slate-100">
-            {orders.map((o) => {
-              const late = !o.status.isFinal && o.dueAt && o.dueAt < new Date(new Date().setHours(0, 0, 0, 0));
-              return (
+          <>
+            <Table head={["Código", "Cliente", "Plantillas", "Medidas · entrega", { label: "Importe", className: "text-right" }, { label: "Estado", className: "text-right" }]}>
+              {orders.map((o) => (
+                <Row key={o.id}>
+                  <Cell className="whitespace-nowrap font-mono text-xs text-slate-500"><RowLink href={`/plantillas/${o.id}`}>{o.code}</RowLink></Cell>
+                  <Cell className="font-medium text-slate-800">{o.patient.lastName}, {o.patient.firstName}</Cell>
+                  <Cell className="text-slate-600">{detail(o)}</Cell>
+                  <Cell className="whitespace-nowrap text-slate-500">
+                    {formatDate(o.measuredAt)} · <span className={isLate(o) ? "font-medium text-rose-600" : ""}>{formatDate(o.dueAt)}</span>
+                  </Cell>
+                  <Cell className="whitespace-nowrap text-right">
+                    {o.priceCents != null ? (
+                      <>
+                        <p className="font-medium text-slate-800">{formatEUR(o.priceCents)}</p>
+                        <p className={`text-xs ${o.paid ? "text-emerald-700" : "text-rose-600"}`}>{o.paid ? "Pagado" : "Pendiente de pago"}</p>
+                      </>
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
+                  </Cell>
+                  <Cell className="whitespace-nowrap text-right">
+                    <Badge tone={tones[o.statusId]}>{o.status.label}</Badge>
+                    {isLate(o) && <p className="mt-1 text-xs font-medium text-rose-600">Retrasada</p>}
+                  </Cell>
+                </Row>
+              ))}
+            </Table>
+            <ul className="divide-y divide-slate-100 md:hidden">
+              {orders.map((o) => (
                 <li key={o.id}>
-                  <Link href={`/plantillas/${o.id}`} className="grid gap-2 px-5 py-4 hover:bg-slate-50 sm:grid-cols-[1fr_auto] sm:items-center">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-sm text-slate-500">{o.code}</span>
-                        <Badge tone={tones[o.statusId]}>{o.status.label}</Badge>
-                        {o.priceCents != null && <Badge tone={o.paid ? "emerald" : "rose"}>{o.paid ? "Pagado" : "Pendiente de pago"}</Badge>}
-                        {late && <Badge tone="rose">Retrasada</Badge>}
-                      </div>
-                      <p className="mt-1 font-medium text-slate-800">{o.patient.lastName}, {o.patient.firstName}</p>
-                      <p className="truncate text-sm text-slate-500">
-                        {[o.type.label, `pie ${side[o.side].toLowerCase()}`, o.shoeSize != null && `nº ${o.shoeSize.toLocaleString("es-ES")}`, o.material?.label].filter(Boolean).join(" · ")}
-                      </p>
+                  <Link href={`/plantillas/${o.id}`} className="block px-5 py-4 hover:bg-slate-50">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-medium text-slate-800">{o.patient.lastName}, {o.patient.firstName}</p>
+                      <Badge tone={tones[o.statusId]}>{o.status.label}</Badge>
                     </div>
-                    <div className="text-sm text-slate-500 sm:text-right">
-                      {o.priceCents != null && <p className="font-medium text-slate-700">{formatEUR(o.priceCents)}</p>}
-                      <p>Medidas {formatDate(o.measuredAt)}{o.dueAt && ` · Entrega ${formatDate(o.dueAt)}`}</p>
-                    </div>
+                    <p className="truncate text-sm text-slate-500">{detail(o)}</p>
+                    <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                      <span className="font-mono">{o.code}</span> · Entrega <span className={isLate(o) ? "font-medium text-rose-600" : ""}>{formatDate(o.dueAt)}</span>
+                      {o.priceCents != null && <Badge tone={o.paid ? "emerald" : "rose"}>{formatEUR(o.priceCents)} · {o.paid ? "pagado" : "pendiente"}</Badge>}
+                    </p>
                   </Link>
                 </li>
-              );
-            })}
-          </ul>
+              ))}
+            </ul>
+          </>
         )}
       </Card>
     </>

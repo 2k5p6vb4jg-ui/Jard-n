@@ -112,8 +112,9 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
   return (
     <>
       <PageHeader
+        eyebrow="Cliente"
         title={`${patient.firstName} ${patient.lastName}`}
-        description={patient.dni ?? undefined}
+        description={[patient.dni, patient.phone, patient.city].filter(Boolean).join(" · ") || undefined}
         actions={
           <>
             <span className="self-center">

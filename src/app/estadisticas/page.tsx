@@ -10,8 +10,8 @@ export const dynamic = "force-dynamic";
 
 function Tile({ label, value, hint, icon: Icon }: { label: string; value: string; hint?: string; icon: typeof Users }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="flex items-center gap-2 text-sm text-slate-500"><Icon className="size-4" />{label}</p>
+    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-card sm:p-5">
+      <p className="flex items-center gap-2 text-sm font-medium text-slate-500"><span className="grid size-8 place-items-center rounded-lg bg-gold-50 text-gold-700"><Icon className="size-4" /></span>{label}</p>
       <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">{value}</p>
       {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
     </div>

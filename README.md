@@ -20,7 +20,11 @@ Ningún dato sale del equipo (sin servicios en la nube, sin telemetría).
    - Si Windows muestra «Windows protegió su PC», pulse **Más información → Ejecutar de todas formas**.
    - Si aparece el aviso del **Firewall**, marque solo **Redes privadas** y pulse **Permitir acceso**.
 4. Los demás días: **doble clic en `ARRANCAR.bat`** (o configure el arranque automático, abajo).
-5. **¿El móvil no abre la app?** Cierre la ventana negra y haga doble clic en **`PERMITIR-MOVIL.bat`** (pide
+5. **Que se abra en su propia ventana (sin la barra de Edge):** doble clic en **`CREAR-ACCESO-DIRECTO.bat`**. Crea
+   el icono «Jardón Ortopedia» en el escritorio (y, si se quiere, al iniciar Windows). Sirve también en los demás PCs
+   de la tienda: pide la dirección que aparece en la ventana negra. En el ordenador de la tienda también se puede
+   instalar desde Edge: menú «…» → Aplicaciones → *Instalar Jardón Ortopedia*.
+6. **¿El móvil no abre la app?** Cierre la ventana negra y haga doble clic en **`PERMITIR-MOVIL.bat`** (pide
    permiso de administrador): quita los bloqueos del cortafuegos de Windows, marca la red como privada y
    muestra la dirección exacta que hay que escribir en el móvil.
 
@@ -155,6 +159,8 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
 - **Avisos de renovación en el panel:** botón para llamar (en el móvil marca directamente), «Llamado»
   (queda con la fecha), «Renovar» (abre la nueva prescripción), «En 30 días» (oculta el aviso un mes sin
   cambiar la fecha real) y «No renueva». Un aviso descartado se reactiva desde la ficha del paciente.
+- **Identidad visual editable** (Ajustes): color principal, acento y tono oscuro; logo en la barra lateral, los PDF y
+  el icono de la app. Sin logo se muestran las iniciales del negocio.
 - **Ajustes editables:** datos fiscales, tarifa por hora, IVA, validez y pie legal de presupuestos, plazos de
   renovación, logo (barra lateral y PDF) y técnicos (alta, tarifa propia, activar/desactivar).
 

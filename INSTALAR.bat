@@ -85,7 +85,7 @@ echo   Para abrirla desde el movil, use la direccion "Desde la Wi-Fi".
 echo   Otro dia, para arrancarla: doble clic en ARRANCAR.bat
 echo  ----------------------------------------------------------
 echo.
-start "" cmd /c "timeout /t 10 /nobreak >nul & start http://localhost:3000"
+start "" /min "%~dp0scripts\windows\abrir-app.bat" http://localhost:3000 10
 call npm start
 goto :fin
 

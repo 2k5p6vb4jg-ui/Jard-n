@@ -35,7 +35,8 @@ export default async function InsoleOrderPage({ params }: { params: Promise<{ id
   return (
     <>
       <PageHeader
-        title={`Plantillas ${order.code}`}
+        eyebrow={<span className="font-mono normal-case tracking-normal">{order.code}</span>}
+        title={`Plantillas ${order.type.label.toLowerCase()}`}
         description={`${p.firstName} ${p.lastName}`}
         actions={
           <>

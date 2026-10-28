@@ -23,5 +23,5 @@ export async function proxy(req: NextRequest) {
 
 export const config = {
   // Todo salvo la pantalla de acceso, los recursos estáticos y el logo (se muestra en el acceso)
-  matcher: ["/((?!acceso|_next/static|_next/image|favicon\\.ico|api/logo).*)"],
+  matcher: ["/((?!acceso|_next/static|_next/image|favicon\\.ico|api/logo|api/icono|manifest\\.webmanifest|sw\\.js|offline\\.html).*)"],
 };

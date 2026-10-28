@@ -20,7 +20,7 @@ echo   JARDON ORTOPEDIA en marcha.
 echo   NO CIERRE ESTA VENTANA mientras use la aplicacion.
 echo   Para abrirla desde el movil, use la direccion "Desde la Wi-Fi".
 echo  ----------------------------------------------------------
-start "" cmd /c "timeout /t 8 /nobreak >nul & start http://localhost:3000"
+start "" /min "%~dp0scripts\windows\abrir-app.bat" http://localhost:3000 8
 call npm start
 goto :fin
 

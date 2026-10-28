@@ -44,10 +44,10 @@ export function PinPad({ action, back }: { action: (s: ActionState, fd: FormData
     <form ref={formRef} onSubmit={(e) => { e.preventDefault(); submit(); }} className="space-y-6">
       <div className={`flex h-6 justify-center gap-3 ${shake ? "animate-[shake_0.4s]" : ""}`} aria-live="polite" aria-label={`${pin.length} dígitos introducidos`}>
         {Array.from({ length: Math.max(4, pin.length) }, (_, i) => (
-          <span key={i} className={`size-4 rounded-full transition ${i < pin.length ? "bg-teal-600" : "bg-slate-200"}`} />
+          <span key={i} className={`size-4 rounded-full transition ${i < pin.length ? "bg-gold-500" : "bg-white/20"}`} />
         ))}
       </div>
-      <p className="h-5 text-center text-sm font-medium text-rose-600" role="alert">{state?.error}</p>
+      <p className="h-5 text-center text-sm font-medium text-rose-300" role="alert">{state?.error}</p>
       <div className="grid grid-cols-3 gap-3">
         {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
           <button key={d} type="button" className={key} disabled={pending} onClick={() => setPin((p) => (p.length < 8 ? p + d : p))}>{d}</button>
