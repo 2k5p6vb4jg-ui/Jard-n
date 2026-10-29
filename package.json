@@ -1,6 +1,6 @@
 {
   "name": "jardon-ortopedia",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "Gestión clínica y de taller para ortopedia. Web App local (LAN), SQLite + Prisma.",
   "scripts": {
@@ -15,7 +15,10 @@
     "db:studio": "prisma studio",
     "demo": "prisma migrate deploy && prisma db seed",
     "vaciar": "node scripts/vaciar.mjs",
-    "copia": "node scripts/copia.mjs manual"
+    "copia": "node scripts/copia.mjs manual",
+    "test": "playwright test",
+    "test:unidad": "playwright test --project=unidad",
+    "test:informe": "playwright show-report .test/informe"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -33,6 +36,7 @@
     "yauzl": "^3.4.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.56.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/archiver": "^8.0.0",
     "@types/node": "^22",

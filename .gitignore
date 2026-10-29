@@ -19,3 +19,7 @@ next-env.d.ts
 npm-debug.log*
 /.backup-tmp/
 /logs/
+
+# Pruebas automáticas (base de datos y compilación propias)
+/.test/
+/.next-test/

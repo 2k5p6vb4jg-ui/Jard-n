@@ -67,13 +67,13 @@ export default async function OptionsPage({ searchParams }: { searchParams: Prom
         description="Lo que aparece en los desplegables. Las opciones en uso no se borran: se desactivan (siguen viéndose en los registros antiguos)."
         actions={<LinkButton href="/configuracion" variant="secondary">Volver a Ajustes</LinkButton>}
       />
-      <nav className="mb-6 inline-flex rounded-xl bg-slate-100 p-1" aria-label="Listas">
+      <nav className="mb-6 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 sm:inline-flex sm:gap-0" aria-label="Listas">
         {(Object.keys(TABS) as (keyof typeof TABS)[]).map((k) => (
           <Link
             key={k}
             href={`/configuracion/opciones?pestana=${k}`}
             aria-current={k === tab ? "page" : undefined}
-            className={`flex min-h-11 items-center rounded-lg px-5 font-medium transition ${k === tab ? "bg-white text-teal-700 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
+            className={`flex min-h-11 items-center justify-center rounded-lg px-5 font-medium transition ${k === tab ? "bg-white text-teal-700 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
           >
             {TABS[k].label}
           </Link>

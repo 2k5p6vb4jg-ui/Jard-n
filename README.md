@@ -90,6 +90,7 @@ src/
   components/ui/         Card, Badge, Button (≥48 px táctil), PageHeader, EmptyState
   components/layout/     Barra lateral (escritorio) y barra inferior (móvil: Panel, Clientes, Reparaciones, Plantillas,
                          Más: Agenda, Pedidos, Centros, Trazabilidad, Estadísticas, Ajustes y Buscar)
+  tests/                 Pruebas automáticas (npm test): unidad/ y app/, con datos propios en .test/
   lib/
     prisma.ts            Cliente único de Prisma
     labels.ts            Etiquetas en castellano y colores de badge por enumerado
@@ -238,6 +239,23 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
   taller, presupuestos aceptados y equipos por categoría (cifras orientativas, no sustituyen a la contabilidad).
 
 ![Presupuesto](docs/capturas/presupuesto-pdf.png)
+
+## Pruebas automáticas
+
+```bash
+npm test               # todo: funciones sueltas + la app en el navegador (PC, tablet y móvil)
+npm run test:unidad    # solo las funciones sueltas (segundos, sin arrancar la app)
+npm run test:informe   # abre el informe de la última ejecución
+```
+
+- `tests/unidad/`: CSV de Excel, números de WhatsApp, PIN y sesiones, permisos por perfil, importes de propuestas.
+- `tests/app/`: todas las pantallas abren sin salirse de la pantalla en PC y móvil, agenda, firma en la tablet,
+  usuarios y permisos, avisos por WhatsApp, importación de clientes, copias de seguridad y un flujo completo
+  (cliente → plantillas → cobro → pedido a la marca → recepción).
+- Usan **sus propios datos de ejemplo** en `.test/` (base de datos, adjuntos y copias) y compilan en `.next-test/`
+  con el puerto 3100 (`scripts/test-server.mjs`): **nunca tocan los datos reales** ni la versión instalada, y se
+  pueden pasar con la app de la tienda funcionando. La primera vez en otro ordenador hace falta el navegador de
+  pruebas: `npx playwright install chromium`.
 
 ## Actualizar una instalación existente
 

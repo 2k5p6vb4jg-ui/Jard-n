@@ -1,0 +1,8 @@
+Nombre;Apellido 1;Apellido 2;NIF;Móvil;Población;F. Nacimiento;Observaciones
+José;Muñoz;Peñalver;11111111H;611 000 001;Avilés;03/04/1950;Diabético
+María;Fernández;Álvarez;12345678Z;611 000 002;Gijón;1962-11-30;
+Ana;Suárez;;99999999X;611 000 003;Oviedo;31/02/1970;DNI mal
+;;;;;;;
+Pedro;Iglesias;Rodríguez;;600 111 222;Avilés;;
+Pedro;Iglesias;Sanz;;600111222;Avilés;;
+;;;22222222J;611 000 009;;;sin nombre

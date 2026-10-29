@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Las pruebas automáticas compilan en otra carpeta para no tocar la versión instalada (.next)
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   // Permite abrir el servidor de desarrollo desde tablets/móviles de la Wi-Fi local.
   // (En producción con `npm start` no hace falta.)
   allowedDevOrigins: ["192.168.*.*", "10.*.*.*", "172.*.*.*", "*.local"],
