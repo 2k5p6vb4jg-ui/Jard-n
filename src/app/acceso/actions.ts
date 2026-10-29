@@ -2,8 +2,9 @@
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
-import { cookieOptions, createSessionToken, getAuthConfig, SESSION_COOKIE, verifyPin } from "@/lib/auth";
+import { cookieOptions, createSessionToken, findUserByPin, getAuthConfig, SESSION_COOKIE } from "@/lib/auth";
 import type { ActionState } from "@/lib/forms";
 
 // Intentos fallidos por dispositivo (IP): tras 5 fallos se bloquea 1 min, y el bloqueo se duplica
@@ -23,10 +24,10 @@ export async function login(_prev: ActionState, fd: FormData): Promise<ActionSta
   }
 
   const cfg = await getAuthConfig();
-  if (!cfg.pinHash || !cfg.secret) redirect("/");
+  if (!cfg.enabled || !cfg.secret) redirect("/");
 
-  const pin = String(fd.get("pin") ?? "");
-  if (!verifyPin(pin, cfg.pinHash)) {
+  const user = findUserByPin(String(fd.get("pin") ?? ""), cfg);
+  if (!user) {
     const count = (f?.count ?? 0) + 1;
     const until = count >= 5 ? Date.now() + 60_000 * 2 ** Math.min(count - 5, 5) : 0;
     failures.set(ip, { count, until });
@@ -35,13 +36,14 @@ export async function login(_prev: ActionState, fd: FormData): Promise<ActionSta
   }
 
   failures.delete(ip);
-  const { token, maxAge } = createSessionToken({ secret: cfg.secret, version: cfg.version, hours: cfg.hours });
+  const { token, maxAge } = createSessionToken({ secret: cfg.secret, version: cfg.version, hours: cfg.hours }, user);
   (await cookies()).set(SESSION_COOKIE, token, cookieOptions(maxAge));
-  await audit("VIEW", "Session", undefined, "Acceso correcto");
+  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+  await audit("VIEW", "Session", user.id, "Acceso correcto", user);
   redirect(safeBack(fd.get("volver")));
 }
 
-/** Cierra la sesión de este dispositivo (botón «Bloquear»). */
+/** Cierra la sesión de este dispositivo (botón «Salir» / cambiar de usuario). */
 export async function lock() {
   (await cookies()).delete(SESSION_COOKIE);
   redirect("/acceso");

@@ -211,7 +211,7 @@ model Settings {
   stockingRenewalMonths  Int       @default(6)
   renewalWarningDays     Int       @default(30) // Avisar X días antes de vencer
   // Acceso con PIN (opcional). Sin PIN, la app queda abierta a toda la red local.
-  pinHash                String? // scrypt$sal$hash
+  pinHash                String? // Obsoleto: el PIN único pasó a un usuario «Administración» (ver User)
   sessionSecret          String? // Firma de las cookies de sesión
   sessionHours           Int       @default(12) // Horas hasta pedir de nuevo el PIN
   sessionVersion         Int       @default(0) // Al cambiar el PIN se cierran todas las sesiones
@@ -1082,6 +1082,8 @@ model AuditLog {
   summary   String?
   ip        String? // IP del dispositivo de la red local
   userAgent String?
+  userId    String? // Sin relación: el registro se conserva aunque se borre el usuario
+  userName  String?
   createdAt DateTime    @default(now())
 
   @@index([entity, entityId])
@@ -1093,4 +1095,25 @@ model BackupRecord {
   fileName  String
   sizeBytes Int
   createdAt DateTime @default(now())
+}
+
+// ── Usuarios ────────────────────────────────────────────────────────────────
+
+/** Cada persona entra con su PIN; el perfil decide qué secciones ve. */
+enum UserRole {
+  ADMIN // Administración: todo
+  FRONT_DESK // Mostrador: todo salvo Ajustes y Estadísticas
+  WORKSHOP // Taller: reparaciones, plantillas, pedidos, agenda y trazabilidad (sin fichas clínicas)
+}
+
+model User {
+  id             String    @id @default(cuid())
+  name           String    @unique
+  role           UserRole  @default(FRONT_DESK)
+  pinHash        String // scrypt$sal$hash; distinto para cada usuario (el PIN identifica a la persona)
+  active         Boolean   @default(true)
+  sessionVersion Int       @default(0) // Al cambiar su PIN se cierran sus sesiones
+  lastLoginAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }

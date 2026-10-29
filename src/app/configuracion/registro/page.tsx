@@ -29,6 +29,7 @@ const ENTITIES: Record<string, string> = {
   CenterProposal: "Propuesta",
   OrderItem: "Artículo a pedir",
   PurchaseOrder: "Pedido a marca",
+  User: "Usuario",
   Appointment: "Cita",
   CompressionStocking: "Medias",
   ClinicalDocument: "Documento",
@@ -56,7 +57,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
       <Link href="/configuracion" className="mb-3 inline-flex min-h-10 items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-700">
         <ArrowLeft className="size-4" /> Ajustes
       </Link>
-      <PageHeader title="Registro de actividad" description="Últimos 300 movimientos sobre datos personales, accesos y copias" />
+      <PageHeader title="Registro de actividad" description="Últimos 300 movimientos sobre datos personales, accesos y copias, con la persona que los hizo" />
       <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
         {chip("/configuracion/registro", "Todo", !action)}
         {(Object.keys(ACTIONS) as AuditAction[]).map((a) => chip(`/configuracion/registro?tipo=${a}`, ACTIONS[a].label, action === a))}
@@ -67,11 +68,12 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
         ) : (
           <ul className="divide-y divide-slate-100 text-sm">
             {rows.map((r) => (
-              <li key={r.id} className="grid gap-1 px-5 py-3 sm:grid-cols-[9rem_7rem_8rem_1fr_8rem] sm:items-center sm:gap-3">
+              <li key={r.id} className="grid gap-1 px-5 py-3 sm:grid-cols-[9rem_7rem_8rem_1fr_8rem_8rem] sm:items-center sm:gap-3">
                 <span className="text-slate-500">{r.createdAt.toLocaleString("es-ES", { dateStyle: "short", timeStyle: "medium" })}</span>
                 <span><Badge tone={ACTIONS[r.action].tone}>{ACTIONS[r.action].label}</Badge></span>
                 <span className="font-medium text-slate-700">{ENTITIES[r.entity] ?? r.entity}</span>
                 <span className="min-w-0 truncate text-slate-600" title={r.summary ?? undefined}>{r.summary ?? "—"}</span>
+                <span className="truncate text-slate-700">{r.userName ?? <span className="text-slate-400">—</span>}</span>
                 <span className="truncate font-mono text-xs text-slate-400">{r.ip ?? ""}</span>
               </li>
             ))}

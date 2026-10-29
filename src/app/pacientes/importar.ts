@@ -1,5 +1,6 @@
 "use server";
 
+import { requireSection } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -49,6 +50,7 @@ export interface ImportResult {
  * Se saltan los que ya existen: mismo DNI, o mismo teléfono y primer apellido.
  */
 export async function importPatients(rows: ImportRow[], firstRow: number, gdprConsent: boolean): Promise<ImportResult> {
+  await requireSection("clientes");
   const result: ImportResult = { created: 0, duplicates: [], errors: [] };
   const existing = await prisma.patient.findMany({ select: { dni: true, phone: true, lastName: true } });
   const dnis = new Set(existing.map((p) => p.dni).filter(Boolean));

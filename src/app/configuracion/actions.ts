@@ -1,16 +1,14 @@
 "use server";
 
-import crypto from "node:crypto";
 import path from "node:path";
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { cookieOptions, createSessionToken, hashPin, invalidateAuthCache, isValidPin, SESSION_COOKIE, verifyPin } from "@/lib/auth";
 import { BACKUP_DIR, createBackupFile, listBackups, mirrorBackup, testWritableDir, verifyBackup } from "@/lib/backup";
 import { DEFAULT_COLORS, isHexColor } from "@/lib/branding.colors";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
+import { requireSection } from "@/lib/session";
 import { deleteUpload, saveLogo } from "@/lib/storage";
-import { type ActionState, bool, cents, FormError, handle, int, num, required, str } from "@/lib/forms";
+import { type ActionState, bool, cents, FormError, handle, inRange, int, num, required, str } from "@/lib/forms";
 
 const refreshAll = () => revalidatePath("/", "layout");
 
@@ -23,14 +21,10 @@ function colors(fd: FormData) {
   return { brandColor: pick("brandColor"), accentColor: pick("accentColor"), darkColor: pick("darkColor") };
 }
 
-function inRange(v: number | null, min: number, max: number, label: string): number | undefined {
-  if (v === null) return undefined;
-  if (v < min || v > max) throw new FormError(`«${label}» debe estar entre ${min} y ${max}.`);
-  return v;
-}
 
 export async function saveSettings(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const res = await handle(async () => {
+    await requireSection("ajustes");
     const email = str(fd, "email");
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new FormError("El email no es válido.");
     const data = {
@@ -63,6 +57,7 @@ export async function saveSettings(_prev: ActionState, fd: FormData): Promise<Ac
 
 export async function uploadLogo(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const res = await handle(async () => {
+    await requireSection("ajustes");
     const file = fd.get("logo");
     if (!(file instanceof File) || file.size === 0) throw new FormError("Seleccione una imagen.");
     let logoPath: string;
@@ -80,6 +75,7 @@ export async function uploadLogo(_prev: ActionState, fd: FormData): Promise<Acti
 }
 
 export async function removeLogo() {
+  await requireSection("ajustes");
   const prev = await prisma.settings.findUnique({ where: { id: 1 }, select: { logoPath: true } });
   await prisma.settings.update({ where: { id: 1 }, data: { logoPath: null } });
   if (prev?.logoPath) await deleteUpload(prev.logoPath);
@@ -89,6 +85,7 @@ export async function removeLogo() {
 /** Alta o edición de un técnico. Los técnicos no se borran (conservan su historial): se desactivan. */
 export async function saveTechnician(id: string | null, _prev: ActionState, fd: FormData): Promise<ActionState> {
   const res = await handle(async () => {
+    await requireSection("ajustes");
     const data = {
       name: required(fd, "name", "Nombre del técnico"),
       hourlyRateCents: inRange(cents(fd, "hourlyRate"), 0, 100_000, "Tarifa por hora") ?? null,
@@ -101,55 +98,11 @@ export async function saveTechnician(id: string | null, _prev: ActionState, fd: 
   return res;
 }
 
-// ── Acceso con PIN ──────────────────────────────────────────────────────────
-
-/** Pone o cambia el PIN. Cierra las sesiones de los demás dispositivos y mantiene abierta la de este. */
-export async function setPin(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const res = await handle(async () => {
-    const s = await prisma.settings.findUniqueOrThrow({ where: { id: 1 } });
-    if (s.pinHash && !verifyPin(String(fd.get("currentPin") ?? ""), s.pinHash)) throw new FormError("El PIN actual no es correcto.");
-    const pin = String(fd.get("newPin") ?? "");
-    if (!isValidPin(pin)) throw new FormError("El PIN debe tener entre 4 y 8 cifras.");
-    if (pin !== String(fd.get("confirmPin") ?? "")) throw new FormError("Los dos PIN nuevos no coinciden.");
-    if (/^(\d)\1+$/.test(pin) || "0123456789".includes(pin) || "9876543210".includes(pin)) throw new FormError("Elija un PIN menos previsible (no 1111 ni 1234).");
-    const hours = inRange(int(fd, "sessionHours"), 1, 168, "Duración de la sesión") ?? s.sessionHours;
-
-    const updated = await prisma.settings.update({
-      where: { id: 1 },
-      data: {
-        pinHash: hashPin(pin),
-        sessionSecret: s.sessionSecret ?? crypto.randomBytes(32).toString("base64url"),
-        sessionVersion: { increment: 1 },
-        sessionHours: hours,
-      },
-    });
-    invalidateAuthCache();
-    const { token, maxAge } = createSessionToken({ secret: updated.sessionSecret!, version: updated.sessionVersion, hours: updated.sessionHours });
-    (await cookies()).set(SESSION_COOKIE, token, cookieOptions(maxAge));
-    await audit("UPDATE", "Settings", "1", s.pinHash ? "PIN cambiado" : "PIN activado");
-  });
-  if (!res?.error) revalidatePath("/", "layout");
-  return res;
-}
-
-export async function removePin(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const res = await handle(async () => {
-    const s = await prisma.settings.findUniqueOrThrow({ where: { id: 1 } });
-    if (!s.pinHash) return;
-    if (!verifyPin(String(fd.get("currentPin") ?? ""), s.pinHash)) throw new FormError("El PIN actual no es correcto.");
-    await prisma.settings.update({ where: { id: 1 }, data: { pinHash: null, sessionVersion: { increment: 1 } } });
-    invalidateAuthCache();
-    (await cookies()).delete(SESSION_COOKIE);
-    await audit("UPDATE", "Settings", "1", "PIN desactivado");
-  });
-  if (!res?.error) revalidatePath("/", "layout");
-  return res;
-}
-
 // ── Copias de seguridad ─────────────────────────────────────────────────────
 
 export async function saveBackupOptions(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const res = await handle(async () => {
+    await requireSection("ajustes");
     const mirror = str(fd, "backupMirrorDir");
     if (mirror) {
       if (!path.isAbsolute(mirror)) throw new FormError("Escriba la ruta completa de la carpeta, por ejemplo E:\\CopiasJardon o \\\\NAS\\copias.");
@@ -176,6 +129,7 @@ export async function saveBackupOptions(_prev: ActionState, fd: FormData): Promi
 
 export async function backupNow(_prev: ActionState, _fd: FormData): Promise<ActionState> {
   const res = await handle(async () => {
+    await requireSection("ajustes");
     const { file, size } = await createBackupFile("manual");
     await prisma.backupRecord.create({ data: { fileName: path.basename(file), sizeBytes: size } });
     await audit("BACKUP", "Database", undefined, path.basename(file));
@@ -186,6 +140,7 @@ export async function backupNow(_prev: ActionState, _fd: FormData): Promise<Acti
 
 /** Comprueba la copia más reciente sin restaurarla. */
 export async function verifyLatestBackup(_prev: { ok?: boolean; message?: string } | undefined, _fd: FormData): Promise<{ ok: boolean; message: string }> {
+  await requireSection("ajustes");
   const latest = (await listBackups())[0];
   if (!latest) return { ok: false, message: "Todavía no hay ninguna copia guardada en el equipo." };
   try {

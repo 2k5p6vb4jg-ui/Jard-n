@@ -1,24 +1,36 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getAuthConfig, isValidSession, SESSION_COOKIE } from "@/lib/auth";
+import { getAuthConfig, SESSION_COOKIE, sessionUser } from "@/lib/auth";
+import { canAccessPath } from "@/lib/permissions";
 
 /**
- * Si hay PIN configurado, toda la app (páginas, acciones y API) exige sesión.
- * Sin PIN, la app queda abierta a la red local (se avisa en Ajustes).
+ * Si hay usuarios, toda la app (páginas, acciones y API) exige sesión, y cada perfil
+ * solo entra en sus secciones. Sin usuarios, la app queda abierta a la red local (se avisa en Ajustes).
  */
 export async function proxy(req: NextRequest) {
   const cfg = await getAuthConfig();
-  if (!cfg.pinHash) return NextResponse.next();
-  if (isValidSession(req.cookies.get(SESSION_COOKIE)?.value, cfg)) return NextResponse.next();
+  if (!cfg.enabled) return NextResponse.next();
+  const user = sessionUser(req.cookies.get(SESSION_COOKIE)?.value, cfg);
+  const { pathname } = req.nextUrl;
+  const api = pathname.startsWith("/api/");
 
-  if (req.nextUrl.pathname.startsWith("/api/")) {
-    return NextResponse.json({ error: "Sesión caducada. Vuelva a introducir el PIN." }, { status: 401 });
+  if (!user) {
+    if (api) return NextResponse.json({ error: "Sesión caducada. Vuelva a introducir el PIN." }, { status: 401 });
+    const url = req.nextUrl.clone();
+    url.pathname = "/acceso";
+    url.search = "";
+    const back = pathname + req.nextUrl.search;
+    if (back !== "/") url.searchParams.set("volver", back);
+    return NextResponse.redirect(url);
   }
-  const url = req.nextUrl.clone();
-  url.pathname = "/acceso";
-  url.search = "";
-  const back = req.nextUrl.pathname + req.nextUrl.search;
-  if (back !== "/") url.searchParams.set("volver", back);
-  return NextResponse.redirect(url);
+
+  if (!canAccessPath(user.role, pathname)) {
+    if (api) return NextResponse.json({ error: "Su usuario no tiene permiso." }, { status: 403 });
+    const url = req.nextUrl.clone();
+    url.pathname = "/sin-permiso";
+    url.search = "";
+    return NextResponse.rewrite(url, { status: 403 });
+  }
+  return NextResponse.next();
 }
 
 export const config = {

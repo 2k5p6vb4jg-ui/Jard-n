@@ -1,5 +1,6 @@
 "use server";
 
+import { requireSection } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
@@ -71,6 +72,7 @@ export async function updatePatient(id: string, _prev: ActionState, fd: FormData
 
 /** Supresión RGPD: exige escribir ELIMINAR. */
 export async function erasePatientAction(id: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
+  await requireSection("clientes");
   if (String(fd.get("confirm") ?? "").trim().toUpperCase() !== "ELIMINAR") return { error: "Escriba ELIMINAR para confirmar." };
   const counts = await erasePatient(id);
   if (!counts) return { error: "El paciente ya no existe." };

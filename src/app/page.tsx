@@ -18,6 +18,8 @@ import { getDueVisits } from "@/lib/contracts";
 import { orderCounts } from "@/lib/orders";
 import { createVisitOrder } from "@/app/centros/propuestas";
 import { todaysAppointments } from "@/lib/appointments";
+import { currentSession } from "@/lib/session";
+import { canSee } from "@/lib/permissions";
 import { AppointmentCard } from "@/components/agenda/AppointmentCard";
 
 export const dynamic = "force-dynamic";
@@ -72,6 +74,8 @@ export default async function DashboardPage() {
     prisma.settings.findUnique({ where: { id: 1 }, select: { businessName: true, autoBackup: true, lastAutoBackupAt: true, backupMirrorDir: true, lastMirrorError: true } }),
     todaysAppointments(),
   ]);
+  const { user } = await currentSession();
+  const showRenewals = canSee(user?.role, "clientes");
 
   const count = (s: string) => byStatus.find((b) => b.status === s)?._count._all ?? 0;
   const activeCount = WORK_ORDER_FLOW.filter((s) => s !== "DELIVERED").reduce((n, s) => n + count(s), 0);
@@ -87,7 +91,7 @@ export default async function DashboardPage() {
   return (
     <>
       {/* Aviso si las copias de seguridad no se están haciendo bien */}
-      {backup && ((backup.autoBackup && (!backup.lastAutoBackupAt || backup.lastAutoBackupAt < new Date(Date.now() - 3 * 86_400_000))) || (backup.backupMirrorDir && backup.lastMirrorError)) && (
+      {canSee(user?.role, "ajustes") && backup && ((backup.autoBackup && (!backup.lastAutoBackupAt || backup.lastAutoBackupAt < new Date(Date.now() - 3 * 86_400_000))) || (backup.backupMirrorDir && backup.lastMirrorError)) && (
         <Link href="/configuracion" className="mb-5 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 hover:bg-rose-100">
           <AlertTriangle className="mt-0.5 size-5 shrink-0" />
           <span>
@@ -100,11 +104,11 @@ export default async function DashboardPage() {
       )}
       <PageHeader
         eyebrow={new Intl.DateTimeFormat("es-ES", { dateStyle: "full" }).format(new Date())}
-        title={hour < 14 ? "Buenos días" : hour < 21 ? "Buenas tardes" : "Buenas noches"}
+        title={`${hour < 14 ? "Buenos días" : hour < 21 ? "Buenas tardes" : "Buenas noches"}${user ? `, ${user.name}` : ""}`}
         description="Resumen del taller, las plantillas y los avisos de hoy"
         actions={
           <>
-            <LinkButton href="/pacientes/nuevo" variant="secondary" icon={UserPlus}>Nuevo cliente</LinkButton>
+            {showRenewals && <LinkButton href="/pacientes/nuevo" variant="secondary" icon={UserPlus}>Nuevo cliente</LinkButton>}
             <LinkButton href="/plantillas/nueva" variant="secondary" icon={Plus}>Plantillas</LinkButton>
             <LinkButton href="/taller/nueva" icon={ClipboardPlus}>Nueva reparación</LinkButton>
           </>
@@ -115,7 +119,7 @@ export default async function DashboardPage() {
         <Kpi href="/taller" tone="hero" icon={Wrench} label="Reparaciones en curso" value={activeCount} hint={`${count("READY")} ${count("READY") === 1 ? "lista" : "listas"} para entregar`} />
         <Kpi href="/plantillas" icon={Footprints} label="Plantillas en curso" value={openInsoles.length} hint={`${insolesReady} ${insolesReady === 1 ? "lista" : "listas"} para recoger`} />
         <Kpi href="/taller" tone="alert" icon={AlertTriangle} label="Retrasadas" value={lateOrders + lateInsoles} hint="Fecha prevista superada" />
-        <Kpi href="#avisos" icon={BellRing} label="Renovaciones" value={alerts.length} hint={overdue ? `${overdue} ${overdue === 1 ? "vencida" : "vencidas"}` : "Ninguna vencida"} />
+        {showRenewals ? <Kpi href="#avisos" icon={BellRing} label="Renovaciones" value={alerts.length} hint={overdue ? `${overdue} ${overdue === 1 ? "vencida" : "vencidas"}` : "Ninguna vencida"} /> : <Kpi href="/agenda" icon={CalendarDays} label="Citas de hoy" value={appointments.length} hint="Ver la agenda" />}
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
@@ -279,16 +283,18 @@ export default async function DashboardPage() {
               </div>
             </Card>
           )}
-          <Card className="h-fit">
-            <div id="avisos" className="scroll-mt-20" />
-            <CardHeader
-              title="Avisos de renovación"
-              subtitle="Medias cada 6 meses · Plantillas cada 12"
-              icon={BellRing}
-              action={overdue > 0 ? <Badge tone="rose"><AlertTriangle className="size-3.5" />{overdue} vencidos</Badge> : undefined}
-            />
-            <RenewalList alerts={alerts} business={backup?.businessName ?? ""} />
-          </Card>
+          {showRenewals && (
+            <Card className="h-fit">
+              <div id="avisos" className="scroll-mt-20" />
+              <CardHeader
+                title="Avisos de renovación"
+                subtitle="Medias cada 6 meses · Plantillas cada 12"
+                icon={BellRing}
+                action={overdue > 0 ? <Badge tone="rose"><AlertTriangle className="size-3.5" />{overdue} vencidos</Badge> : undefined}
+              />
+              <RenewalList alerts={alerts} business={backup?.businessName ?? ""} />
+            </Card>
+          )}
         </div>
       </div>
     </>

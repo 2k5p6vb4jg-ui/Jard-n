@@ -111,6 +111,7 @@ src/
   viendo en los registros antiguos. Los estados de reparación solo se renombran (su flujo lo fija la app).
 - **Reparaciones:** `WorkOrder` (flujo Entrada → Diagnóstico → Presupuestado → En reparación → Listo → Entregado),
   `WorkOrderPart`, `TimeEntry`, `WorkOrderStatusChange`, `Quote` (instantánea de importes para el PDF), `Technician`.
+- **Usuarios:** `User` (nombre, perfil, PIN cifrado, activo); `AuditLog` guarda `userId` y `userName`.
 - **Agenda:** `Appointment` (inicio, duración, tipo en `CatalogOption`, estado, cliente, centro, reparación o plantillas,
   técnico).
 - **Trazabilidad:** `TrackedProduct` (nº de serie único, lote, UDI, garantía) y `ProductIntervention`.
@@ -121,8 +122,9 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
 ## Privacidad (RGPD)
 
 - La base de datos y los adjuntos viven solo en este equipo y están excluidos de Git (`.gitignore`).
-- **Acceso con PIN** para que nadie de la Wi-Fi abra las fichas, y **registro de actividad** (Ajustes →
-  Registro de actividad): accesos, altas, cambios, exportaciones, copias y borrados, con la IP del dispositivo.
+- **Usuarios con PIN propio** para que nadie de la Wi-Fi abra las fichas, y **registro de actividad** (Ajustes →
+  Registro de actividad): accesos, altas, cambios, exportaciones, copias y borrados, con la persona y la IP del dispositivo.
+  El perfil «Taller» no ve las fichas clínicas de los clientes (minimización de datos).
 - **Derecho de acceso y portabilidad:** en la ficha del paciente, «Exportar todos sus datos» genera un .zip con
   un informe PDF legible, los datos en JSON y todos sus documentos.
 - **Derecho de supresión:** «Suprimir todos los datos» (escribiendo ELIMINAR) borra la ficha, plantillas, prescripciones,
@@ -213,9 +215,13 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
 - **Restauración** desde Ajustes (archivo .zip o copia guardada), escribiendo RESTAURAR para confirmar.
   Antes de tocar nada guarda el estado actual (`jardon-antes-de-restaurar-*.zip`); los datos se vuelcan en
   una sola transacción (o se restaura todo o nada) y una copia de una versión anterior se actualiza sola.
-- **Acceso con PIN** (4-8 cifras, guardado cifrado): teclado numérico grande, sesión que caduca tras las horas
-  configuradas, bloqueo tras 5 intentos fallidos por dispositivo, botón «Bloquear» y cierre de sesión en todos
-  los dispositivos al cambiar el PIN. Protege páginas, acciones, PDF, fotos y copias.
+- **Usuarios con PIN propio** (Ajustes → Usuarios; 4-8 cifras, guardado cifrado, distinto para cada persona: el PIN
+  identifica a quien entra). Perfiles: **Administración** (todo), **Mostrador** (todo salvo Ajustes y Estadísticas) y
+  **Taller** (reparaciones, plantillas, pedidos, agenda y trazabilidad, sin fichas clínicas ni centros). El menú solo
+  muestra lo permitido y el resto devuelve «Sin permiso». Teclado numérico grande, sesión que caduca tras las horas
+  configuradas, bloqueo tras 5 intentos fallidos por dispositivo, «Salir» para cambiar de usuario, «Mi PIN» para que
+  cada uno cambie el suyo y «Cerrar sesión en todos los dispositivos». Al actualizar, el PIN único que hubiera pasa a ser
+  el de un usuario «Administración» (se entra igual). Protege páginas, acciones, PDF, fotos y copias.
 
 - **Resguardo de entrada** imprimible (botón «Resguardo» en cada orden): A4 con copia para el cliente y para
   el taller, con datos del equipo, accesorios, avería, condiciones y firmas.

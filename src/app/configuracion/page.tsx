@@ -13,18 +13,18 @@ import { LogoForm } from "@/components/settings/LogoForm";
 import { RestorePanel } from "@/components/settings/RestorePanel";
 import { VerifyBackup } from "@/components/settings/VerifyBackup";
 import { BACKUP_DIR, listBackups } from "@/lib/backup";
-import { lock } from "../acceso/actions";
-import { verifyLatestBackup, backupNow, removeLogo, removePin, saveBackupOptions, saveSettings, setPin, saveTechnician, uploadLogo } from "./actions";
+import { verifyLatestBackup, backupNow, removeLogo, saveBackupOptions, saveSettings, saveTechnician, uploadLogo } from "./actions";
+import { ROLES } from "@/lib/permissions";
 
 export const metadata = { title: "Ajustes" };
 
 export default async function SettingsPage() {
-  const [settings, stored, technicians] = await Promise.all([
+  const [settings, stored, technicians, users] = await Promise.all([
     prisma.settings.findUnique({ where: { id: 1 } }),
     listBackups(),
     prisma.technician.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }], include: { _count: { select: { workOrders: true } } } }),
+    prisma.user.findMany({ where: { active: true }, select: { id: true, name: true, role: true }, orderBy: { name: "asc" } }),
   ]);
-  const hasPin = !!settings?.pinHash;
   const logoUrl = settings?.logoPath ? `/api/logo?v=${settings.updatedAt.getTime()}` : null;
 
   return (
@@ -35,6 +35,7 @@ export default async function SettingsPage() {
         actions={
           <>
             <LinkButton href="/configuracion/opciones" variant="secondary" icon={ListChecks}>Opciones</LinkButton>
+            <LinkButton href="/configuracion/usuarios" variant="secondary" icon={KeyRound}>Usuarios</LinkButton>
             <LinkButton href="/configuracion/registro" variant="secondary" icon={ScrollText}>Registro de actividad</LinkButton>
           </>
         }
@@ -201,52 +202,21 @@ export default async function SettingsPage() {
 
         <div className="space-y-6">
           <Card>
-            <CardHeader title="Acceso con PIN" icon={KeyRound} subtitle={hasPin ? `Activado · se pide cada ${settings?.sessionHours} h` : undefined} />
-            <div className="space-y-4 p-5">
-              {!hasPin && (
-                <p className="flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-                  <ShieldAlert className="mt-0.5 size-4 shrink-0" />
-                  Sin PIN, cualquier dispositivo conectado a la Wi-Fi de la tienda puede abrir las fichas de los pacientes. Se recomienda activarlo.
+            <CardHeader title="Usuarios y acceso" icon={KeyRound} subtitle={users.length ? `${users.length} con PIN propio · se pide cada ${settings?.sessionHours} h` : undefined} />
+            <div className="space-y-3 p-5">
+              {users.length === 0 ? (
+                <p className="flex gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+                  <ShieldAlert className="size-5 shrink-0" />
+                  Sin PIN, cualquier dispositivo conectado a la Wi-Fi de la tienda puede abrir las fichas de los clientes. Se recomienda activarlo.
                 </p>
+              ) : (
+                <ul className="space-y-1 text-sm text-slate-600">
+                  {users.map((u) => <li key={u.id}><span className="font-medium text-slate-800">{u.name}</span> · {ROLES[u.role].label}</li>)}
+                </ul>
               )}
-              <InlineForm action={setPin} className="space-y-3">
-                {hasPin && (
-                  <div>
-                    <label className="field-label" htmlFor="currentPin">PIN actual</label>
-                    <input id="currentPin" name="currentPin" type="password" inputMode="numeric" autoComplete="off" required className="field" />
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="field-label" htmlFor="newPin">{hasPin ? "PIN nuevo" : "PIN (4-8 cifras)"}</label>
-                    <input id="newPin" name="newPin" type="password" inputMode="numeric" autoComplete="new-password" required minLength={4} maxLength={8} pattern="\d{4,8}" className="field" />
-                  </div>
-                  <div>
-                    <label className="field-label" htmlFor="confirmPin">Repetir PIN</label>
-                    <input id="confirmPin" name="confirmPin" type="password" inputMode="numeric" autoComplete="new-password" required minLength={4} maxLength={8} pattern="\d{4,8}" className="field" />
-                  </div>
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="sessionHours">Volver a pedir el PIN tras (horas)</label>
-                  <input id="sessionHours" name="sessionHours" inputMode="numeric" defaultValue={settings?.sessionHours ?? 12} className="field" />
-                </div>
-                <SubmitButton icon={<KeyRound className="size-5" />} className="w-full">{hasPin ? "Cambiar PIN" : "Activar PIN"}</SubmitButton>
-                {hasPin && <p className="text-xs text-slate-500">Al cambiarlo se cierra la sesión en los demás dispositivos.</p>}
-              </InlineForm>
-              {hasPin && (
-                <>
-                  <form action={lock}>
-                    <SubmitButton icon={<Lock className="size-5" />} variant="secondary" className="w-full">Bloquear este dispositivo</SubmitButton>
-                  </form>
-                  <details className="rounded-xl border border-slate-200 p-3 text-sm">
-                    <summary className="cursor-pointer font-medium text-slate-600">Desactivar el PIN</summary>
-                    <InlineForm action={removePin} className="mt-3 space-y-3">
-                      <input name="currentPin" type="password" inputMode="numeric" placeholder="PIN actual" aria-label="PIN actual" required className="field" />
-                      <SubmitButton icon={<ShieldAlert className="size-5" />} variant="danger" className="w-full">Desactivar PIN</SubmitButton>
-                    </InlineForm>
-                  </details>
-                </>
-              )}
+              <LinkButton href="/configuracion/usuarios" variant={users.length ? "secondary" : "primary"} icon={Users} className="w-full">
+                {users.length ? "Gestionar usuarios" : "Activar el PIN"}
+              </LinkButton>
             </div>
           </Card>
 

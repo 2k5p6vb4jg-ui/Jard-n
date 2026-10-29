@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Building2, ChevronRight, FileText, Footprints, ScanBarcode, Search, Users, Wrench } from "lucide-react";
 import { globalSearch } from "@/lib/search";
+import { currentSession } from "@/lib/session";
+import { canSee } from "@/lib/permissions";
 import { formatDate } from "@/lib/dates";
 import { formatEUR } from "@/lib/money";
 import { quoteStatus, workOrderStatus } from "@/lib/labels";
@@ -18,7 +20,14 @@ const row = "flex min-h-14 items-center gap-3 px-5 py-3 hover:bg-slate-50";
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q = "" } = await searchParams;
-  const r = await globalSearch(q);
+  const [found, { user }] = await Promise.all([globalSearch(q), currentSession()]);
+  // Cada perfil solo ve resultados de sus secciones
+  const r = found && {
+    ...found,
+    patients: canSee(user?.role, "clientes") ? found.patients : [],
+    centers: canSee(user?.role, "centros") ? found.centers : [],
+    proposals: canSee(user?.role, "centros") ? found.proposals : [],
+  };
   const total = r ? r.proposals.length + r.centers.length + r.patients.length + r.orders.length + r.insoleOrders.length + r.products.length + r.quotes.length : 0;
   const st = await getStatusLabels();
   const tones = r?.insoleOrders.length ? statusTones((await getInsoleOptions()).statuses) : {};

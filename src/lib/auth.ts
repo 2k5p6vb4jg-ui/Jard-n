@@ -1,11 +1,12 @@
 import crypto from "node:crypto";
+import type { UserRole } from "@prisma/client";
 import { prisma } from "./prisma";
 
 /**
- * Acceso con PIN (opcional).
- * - El PIN se guarda con scrypt + sal; nunca en claro.
- * - La sesión es una cookie firmada con HMAC: {v: versión, exp: caducidad}.
- *   Cambiar o quitar el PIN incrementa la versión y cierra todas las sesiones.
+ * Acceso con PIN por usuario (opcional: sin usuarios la app queda abierta a la red local).
+ * - Cada PIN se guarda con scrypt + sal; nunca en claro. El PIN identifica a la persona.
+ * - La sesión es una cookie firmada con HMAC: {u: usuario, v: versión global, uv: versión del usuario, exp}.
+ *   «Cerrar todas las sesiones» sube la versión global; cambiar el PIN de alguien, la suya.
  */
 export const SESSION_COOKIE = "jo_sesion";
 
@@ -24,52 +25,84 @@ export function verifyPin(pin: string, stored: string): boolean {
 }
 
 export const isValidPin = (pin: string) => /^\d{4,8}$/.test(pin);
+export const isPredictablePin = (pin: string) => /^(\d)\1+$/.test(pin) || "0123456789".includes(pin) || "9876543210".includes(pin);
 
-interface AuthConfig {
-  pinHash: string | null;
+export interface SessionUser {
+  id: string;
+  name: string;
+  role: UserRole;
+}
+
+interface AuthUser extends SessionUser {
+  pinHash: string;
+  version: number;
+}
+
+export interface AuthConfig {
+  /** Hay al menos un usuario activo: se pide PIN */
+  enabled: boolean;
   secret: string | null;
   version: number;
   hours: number;
+  users: AuthUser[];
 }
 
-// La configuración se consulta en cada petición: caché corta para no leer la BD constantemente
-let cache: { at: number; cfg: AuthConfig } | null = null;
+// La configuración se consulta en cada petición: caché corta para no leer la BD constantemente.
+// Vive en globalThis para que el proxy y las acciones (empaquetados por separado) compartan la misma y
+// un cambio de PIN o de usuario se note al instante.
+const store = globalThis as typeof globalThis & { __joAuth?: { at: number; cfg: AuthConfig } | null };
 
 export async function getAuthConfig(): Promise<AuthConfig> {
+  const cache = store.__joAuth;
   if (cache && Date.now() - cache.at < 3000) return cache.cfg;
-  const s = await prisma.settings.findUnique({
-    where: { id: 1 },
-    select: { pinHash: true, sessionSecret: true, sessionVersion: true, sessionHours: true },
-  });
-  const cfg = { pinHash: s?.pinHash ?? null, secret: s?.sessionSecret ?? null, version: s?.sessionVersion ?? 0, hours: s?.sessionHours ?? 12 };
-  cache = { at: Date.now(), cfg };
+  const [s, users] = await Promise.all([
+    prisma.settings.findUnique({ where: { id: 1 }, select: { sessionSecret: true, sessionVersion: true, sessionHours: true } }),
+    prisma.user.findMany({ where: { active: true }, select: { id: true, name: true, role: true, pinHash: true, sessionVersion: true } }),
+  ]);
+  const cfg: AuthConfig = {
+    enabled: users.length > 0,
+    secret: s?.sessionSecret ?? null,
+    version: s?.sessionVersion ?? 0,
+    hours: s?.sessionHours ?? 12,
+    users: users.map(({ sessionVersion, ...u }) => ({ ...u, version: sessionVersion })),
+  };
+  store.__joAuth = { at: Date.now(), cfg };
   return cfg;
 }
 
 export function invalidateAuthCache() {
-  cache = null;
+  store.__joAuth = null;
+}
+
+/** Usuario activo con ese PIN (los PIN no se repiten entre usuarios) */
+export function findUserByPin(pin: string, cfg: AuthConfig): AuthUser | null {
+  return cfg.users.find((u) => verifyPin(pin, u.pinHash)) ?? null;
 }
 
 const sign = (payload: string, secret: string) => crypto.createHmac("sha256", secret).update(payload).digest("base64url");
 
-export function createSessionToken(cfg: { secret: string; version: number; hours: number }): { token: string; maxAge: number } {
+export function createSessionToken(cfg: { secret: string; version: number; hours: number }, user: { id: string; version: number }): { token: string; maxAge: number } {
   const maxAge = cfg.hours * 3600;
-  const payload = Buffer.from(JSON.stringify({ v: cfg.version, exp: Date.now() + maxAge * 1000 })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ u: user.id, v: cfg.version, uv: user.version, exp: Date.now() + maxAge * 1000 })).toString("base64url");
   return { token: `${payload}.${sign(payload, cfg.secret)}`, maxAge };
 }
 
-export function isValidSession(token: string | undefined, cfg: AuthConfig): boolean {
-  if (!token || !cfg.secret) return false;
+/** Usuario de la sesión, o null si la cookie no vale (caducada, firma mala, usuario desactivado o PIN cambiado). */
+export function sessionUser(token: string | undefined, cfg: AuthConfig): SessionUser | null {
+  if (!token || !cfg.secret) return null;
   const [payload, sig] = token.split(".");
-  if (!payload || !sig) return false;
+  if (!payload || !sig) return null;
   const expected = Buffer.from(sign(payload, cfg.secret));
   const given = Buffer.from(sig);
-  if (expected.length !== given.length || !crypto.timingSafeEqual(expected, given)) return false;
+  if (expected.length !== given.length || !crypto.timingSafeEqual(expected, given)) return null;
   try {
-    const { v, exp } = JSON.parse(Buffer.from(payload, "base64url").toString());
-    return v === cfg.version && typeof exp === "number" && exp > Date.now();
+    const { u, v, uv, exp } = JSON.parse(Buffer.from(payload, "base64url").toString());
+    if (v !== cfg.version || typeof exp !== "number" || exp <= Date.now()) return null;
+    const user = cfg.users.find((x) => x.id === u);
+    if (!user || user.version !== uv) return null;
+    return { id: user.id, name: user.name, role: user.role };
   } catch {
-    return false;
+    return null;
   }
 }
 

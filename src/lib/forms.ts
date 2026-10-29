@@ -105,3 +105,9 @@ export async function handle(fn: () => Promise<void>): Promise<ActionState> {
 export function optionChoices(list: { id: string; label: string; active: boolean }[], current?: string | null) {
   return list.filter((o) => o.active || o.id === current).map((o) => ({ value: o.id, label: o.active ? o.label : `${o.label} (desactivada)` }));
 }
+
+export function inRange(v: number | null, min: number, max: number, label: string): number | undefined {
+  if (v === null) return undefined;
+  if (v < min || v > max) throw new FormError(`«${label}» debe estar entre ${min} y ${max}.`);
+  return v;
+}

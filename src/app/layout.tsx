@@ -5,6 +5,7 @@ import { brandCss } from "@/lib/branding.colors";
 import { prisma } from "@/lib/prisma";
 import { ensureDailyBackup } from "@/lib/backup";
 import { ensureSettings } from "@/lib/settings";
+import { currentSession } from "@/lib/session";
 import { BottomNav, MobileHeader, Sidebar } from "@/components/layout/Navigation";
 import { ServiceWorker } from "@/components/layout/ServiceWorker";
 
@@ -25,7 +26,9 @@ export async function generateViewport(): Promise<Viewport> {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   await ensureSettings();
-  const settings = await prisma.settings.findUnique({ where: { id: 1 }, select: { businessName: true, logoPath: true, updatedAt: true, pinHash: true, brandColor: true, accentColor: true, darkColor: true } });
+  const settings = await prisma.settings.findUnique({ where: { id: 1 }, select: { businessName: true, logoPath: true, updatedAt: true, brandColor: true, accentColor: true, darkColor: true } });
+  const { user } = await currentSession();
+  const navUser = user && { name: user.name, role: user.role };
   // Copia diaria en segundo plano (no bloquea la carga de la página)
   ensureDailyBackup();
 
@@ -39,15 +42,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body>
         <div className="flex min-h-dvh">
-          <Sidebar businessName={businessName} logoUrl={logoUrl} hasPin={!!settings?.pinHash} />
+          <Sidebar businessName={businessName} logoUrl={logoUrl} user={navUser} />
           <div className="min-w-0 flex-1">
-            <MobileHeader businessName={businessName} logoUrl={logoUrl} />
+            <MobileHeader businessName={businessName} logoUrl={logoUrl} user={navUser} />
             <main className="px-4 pb-28 pt-5 sm:px-8 lg:pb-10 lg:pt-8">
               <div className="mx-auto max-w-7xl">{children}</div>
             </main>
           </div>
         </div>
-        <BottomNav hasPin={!!settings?.pinHash} />
+        <BottomNav user={navUser} />
         <ServiceWorker />
       </body>
     </html>

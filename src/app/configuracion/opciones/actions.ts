@@ -1,5 +1,6 @@
 "use server";
 
+import { requireSection } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import { OptionKind } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -14,6 +15,7 @@ const usage = { select: { typeOrders: true, materialOrders: true, statusOrders: 
 /** Alta (id = null) o edición de una opción. Los estados de reparación solo se renombran: su flujo lo fija la app. */
 export async function saveOption(id: string | null, kind: OptionKind, _prev: ActionState, fd: FormData): Promise<ActionState> {
   const res = await handle(async () => {
+    await requireSection("ajustes");
     if (!Object.values(OptionKind).includes(kind)) throw new FormError("Lista no válida.");
     const label = required(fd, "label", "Nombre");
     if (label.length > 60) throw new FormError("El nombre es demasiado largo (máximo 60 caracteres).");
@@ -52,6 +54,7 @@ async function ensureAnOpenStatus(exceptId: string) {
 
 /** Sube o baja una opción en la lista (intercambia el orden con la vecina). */
 export async function moveOption(id: string, direction: "up" | "down") {
+  await requireSection("ajustes");
   const opt = await prisma.catalogOption.findUnique({ where: { id } });
   if (!opt || opt.kind === "WORK_STATUS") return;
   const list = await prisma.catalogOption.findMany({ where: { kind: opt.kind }, orderBy: [{ sortOrder: "asc" }, { label: "asc" }] });
@@ -65,6 +68,7 @@ export async function moveOption(id: string, direction: "up" | "down") {
 
 /** Solo se borran las opciones que ningún registro usa; las demás se desactivan. */
 export async function deleteOption(id: string) {
+  await requireSection("ajustes");
   const opt = await prisma.catalogOption.findUnique({ where: { id }, include: { _count: usage } });
   if (!opt || opt.kind === "WORK_STATUS") return;
   if (Object.values(opt._count).some((n) => n > 0)) return;
