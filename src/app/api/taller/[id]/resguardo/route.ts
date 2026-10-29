@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { loadLogo } from "@/lib/branding";
 import { renderReceiptPdf } from "@/lib/pdf/receiptPdf";
+import { pdfSignature } from "@/lib/signatures";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [o, settings] = await Promise.all([
-    prisma.workOrder.findUnique({ where: { id }, include: { patient: true, equipmentCategory: { select: { label: true } }, serviceType: { select: { label: true } } } }),
+    prisma.workOrder.findUnique({ where: { id }, include: { patient: true, equipmentCategory: { select: { label: true } }, serviceType: { select: { label: true } }, signatures: { orderBy: { signedAt: "desc" }, take: 1 } } }),
     prisma.settings.findUnique({ where: { id: 1 } }),
   ]);
   if (!o) return new Response("Orden no encontrada", { status: 404 });
@@ -31,6 +32,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     customer: o.patient
       ? { name: `${o.patient.firstName} ${o.patient.lastName}`, phone: o.patient.phone, dni: o.patient.dni }
       : { name: o.customerName ?? "Cliente", phone: o.customerPhone },
+    signature: pdfSignature(o.signatures[0]),
   });
   return new Response(Buffer.from(bytes), {
     headers: { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="resguardo-${o.code}.pdf"`, "Cache-Control": "no-store" },

@@ -34,6 +34,7 @@ async function reset() {
   // Orden inverso a las dependencias
   await prisma.auditLog.deleteMany();
   await prisma.appointment.deleteMany();
+  await prisma.signature.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.purchaseOrder.deleteMany();
   await prisma.supplier.deleteMany();

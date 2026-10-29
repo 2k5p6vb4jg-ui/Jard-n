@@ -2,6 +2,7 @@ import "server-only";
 import { PDFDocument, type PDFFont, type PDFPage, StandardFonts, rgb } from "pdf-lib";
 import type { Settings } from "@prisma/client";
 import { formatDate } from "../dates";
+import type { PdfSignature } from "../signatures";
 
 export interface ReceiptData {
   settings: Settings | null;
@@ -18,6 +19,8 @@ export interface ReceiptData {
     underWarranty: boolean;
   };
   customer: { name: string; phone?: string | null; dni?: string | null };
+  /** Firma del cliente hecha en la tablet */
+  signature?: PdfSignature | null;
 }
 
 const W = 595.28;
@@ -67,6 +70,8 @@ export async function renderReceiptPdf(data: ReceiptData): Promise<Uint8Array> {
   const logo = data.logo
     ? await (data.logo.type === "png" ? pdf.embedPng(data.logo.bytes) : pdf.embedJpg(data.logo.bytes)).catch(() => null)
     : null;
+
+  const sigImg = data.signature ? await pdf.embedPng(data.signature.png).catch(() => null) : null;
 
   const page: PDFPage = pdf.addPage([W, H]);
   const half = H / 2;
@@ -129,6 +134,11 @@ export async function renderReceiptPdf(data: ReceiptData): Promise<Uint8Array> {
       const x = M + i * (sigW + 30);
       page.drawRectangle({ x, y: sigTop - 44, width: sigW, height: 50, borderColor: LINE, borderWidth: 0.6, borderDashArray: [3, 3] });
       page.drawText(safe(lbl), { x: x + 6, y: sigTop - 6, size: 7, font, color: MUTED });
+      if (i === 0 && sigImg && data.signature) {
+        const sc = Math.min((sigW - 12) / sigImg.width, 30 / sigImg.height);
+        page.drawImage(sigImg, { x: x + 6, y: sigTop - 38, width: sigImg.width * sc, height: sigImg.height * sc });
+        page.drawText(safe(data.signature.caption), { x: x + 6, y: sigTop - 42, size: 6, font, color: MUTED });
+      }
     });
   };
 

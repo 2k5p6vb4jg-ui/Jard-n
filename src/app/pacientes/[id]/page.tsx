@@ -9,6 +9,7 @@ import {
   FileText,
   Footprints,
   Pencil,
+  PenLine,
   Plus,
   RotateCcw,
   Mail,
@@ -97,9 +98,11 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
       center: { select: { id: true, name: true } },
       orderItems: linkedItemsSelect,
       insoleOrders: { include: { type: true, material: true, status: true }, orderBy: { createdAt: "desc" } },
+      signatures: { where: { kind: "CONSENT" }, select: { signedAt: true }, orderBy: { signedAt: "desc" }, take: 1 },
     },
   });
   if (!patient) notFound();
+  const consent = patient.signatures[0];
   const st = await getStatusLabels();
   const business = await businessName();
   const tones = statusTones(await prisma.catalogOption.findMany({ where: { kind: "STATUS" }, orderBy: [{ sortOrder: "asc" }, { label: "asc" }] }));
@@ -165,6 +168,17 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
         <Card>
           <CardHeader title="Protección de datos" icon={ShieldCheck} subtitle="Derechos del paciente (RGPD)" />
           <div className="space-y-3 p-5">
+            {consent ? (
+              <div className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
+                <p className="flex items-center gap-1.5 font-medium"><ShieldCheck className="size-4" />Consentimiento firmado el {formatDate(consent.signedAt)}</p>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                  <a href={`/api/pacientes/${patient.id}/consentimiento`} target="_blank" rel="noreferrer" className="font-medium text-emerald-900 underline-offset-2 hover:underline">Ver PDF firmado</a>
+                  <Link href={`/firmar?tipo=consentimiento&id=${patient.id}`} className="font-medium text-emerald-900 underline-offset-2 hover:underline">Volver a firmar</Link>
+                </div>
+              </div>
+            ) : (
+              <LinkButton href={`/firmar?tipo=consentimiento&id=${patient.id}`} icon={PenLine} className="w-full">Firmar consentimiento en la tablet</LinkButton>
+            )}
             <a href={`/api/pacientes/${patient.id}/exportar`} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 font-medium text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
               <FileDown className="size-5" />
               Exportar todos sus datos

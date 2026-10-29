@@ -1,4 +1,5 @@
 import "server-only";
+import type { PdfSignature } from "../signatures";
 import { PDFDocument, type PDFFont, type PDFPage, StandardFonts, rgb } from "pdf-lib";
 import type { Settings } from "@prisma/client";
 import { formatEUR } from "../money";
@@ -24,6 +25,8 @@ export interface CommercialPdfData {
   totalNote?: string;
   after: { title: string; body: string }[];
   signatures: [string, string];
+  /** Firmas hechas en la tablet, en el mismo orden que `signatures` */
+  signatureImages?: (PdfSignature | null)[];
 }
 
 const hexToRgb = (hex: string) => rgb(parseInt(hex.slice(1, 3), 16) / 255, parseInt(hex.slice(3, 5), 16) / 255, parseInt(hex.slice(5, 7), 16) / 255);
@@ -239,6 +242,13 @@ export async function renderCommercialPdf(data: CommercialPdfData): Promise<Uint
     const x = M + i * (sigW + 40);
     page.drawRectangle({ x, y: y - 56, width: sigW, height: 62, borderColor: SLATE_400, borderWidth: 0.6, borderDashArray: [3, 3] });
     text(label, x + 8, y - 8, 8, font, SLATE_600);
+    const sig = data.signatureImages?.[i];
+    const img = sig ? await pdf.embedPng(sig.png).catch(() => null) : null;
+    if (sig && img) {
+      const sc = Math.min((sigW - 16) / img.width, 34 / img.height);
+      page.drawImage(img, { x: x + 8, y: y - 48, width: img.width * sc, height: img.height * sc });
+      text(sig.caption, x + 8, y - 53, 6.5, font, SLATE_600);
+    }
   }
 
   // ── Pie legal y numeración en todas las páginas ───────────────────────────

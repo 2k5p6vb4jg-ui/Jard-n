@@ -31,6 +31,7 @@ const ENTITIES: Record<string, string> = {
   PurchaseOrder: "Pedido a marca",
   User: "Usuario",
   Appointment: "Cita",
+  Signature: "Firma",
   CompressionStocking: "Medias",
   ClinicalDocument: "Documento",
   Settings: "Ajustes",

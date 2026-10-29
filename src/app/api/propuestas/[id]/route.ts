@@ -5,6 +5,7 @@ import { formatEUR } from "@/lib/money";
 import { billingPeriod, proposalKind } from "@/lib/labels";
 import { contractValueCents, parseProposalLines, proposalTotals } from "@/lib/proposals";
 import { renderCommercialPdf } from "@/lib/pdf/commercialPdf";
+import { pdfSignature } from "@/lib/signatures";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,7 +15,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   const p = await prisma.centerProposal.findUnique({
     where: { id },
-    include: { center: { include: { contacts: { orderBy: { createdAt: "asc" }, take: 1 } } }, products: { include: { category: { select: { label: true } } }, orderBy: { serialNumber: "asc" } } },
+    include: { signature: true, center: { include: { contacts: { orderBy: { createdAt: "asc" }, take: 1 } } }, products: { include: { category: { select: { label: true } } }, orderBy: { serialNumber: "asc" } } },
   });
   if (!p) return new Response("Propuesta no encontrada", { status: 404 });
   const settings = await prisma.settings.findUnique({ where: { id: 1 } });
@@ -82,6 +83,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       },
     ],
     signatures: ["Conforme del centro (firma, sello y fecha)", `Por ${businessName}`],
+    signatureImages: [pdfSignature(p.signature)],
   });
 
   const download = new URL(req.url).searchParams.has("descargar");

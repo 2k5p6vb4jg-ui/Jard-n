@@ -111,6 +111,8 @@ src/
   viendo en los registros antiguos. Los estados de reparación solo se renombran (su flujo lo fija la app).
 - **Reparaciones:** `WorkOrder` (flujo Entrada → Diagnóstico → Presupuestado → En reparación → Listo → Entregado),
   `WorkOrderPart`, `TimeEntry`, `WorkOrderStatusChange`, `Quote` (instantánea de importes para el PDF), `Technician`.
+- **Firmas:** `Signature` (PNG en la BD, tipo, firmante, fecha, texto aceptado) enlazada a la reparación, el
+  presupuesto, la propuesta o el cliente; se borra en cascada con ellos.
 - **Usuarios:** `User` (nombre, perfil, PIN cifrado, activo); `AuditLog` guarda `userId` y `userName`.
 - **Agenda:** `Appointment` (inicio, duración, tipo en `CatalogOption`, estado, cliente, centro, reparación o plantillas,
   técnico).
@@ -151,6 +153,11 @@ Los importes se guardan en **céntimos** (`Int`) para evitar errores de redondeo
   prevista, estado, precio, pagado y observaciones; cambio de estado y de pago con un toque, aviso de «Retrasada».
   Tipos, materiales y estados se editan en **Ajustes → Opciones → Plantillas** (añadir, renombrar, ordenar,
   desactivar; un estado «final» saca el pedido de «En curso»).
+- **Firma en la tablet:** el cliente firma con el dedo el resguardo de entrada, los presupuestos («Firmar en la
+  tablet», que además puede marcarlo como aceptado), las propuestas a centros y el consentimiento RGPD (con el texto
+  completo que se acepta y la casilla aparte para recibir avisos). La firma se guarda en la base de datos con nombre,
+  DNI opcional, fecha y quién la recogió, aparece dentro de la casilla de firma de cada PDF y el consentimiento tiene su
+  propio PDF firmado («Ver PDF firmado» en la ficha). Las firmas van en la exportación RGPD y se borran con la supresión.
 - **Agenda de citas:** vista por semanas (el domingo solo aparece si tiene algo), «Dar cita» con tipo, día, hora,
   duración, quién atiende, dónde y cliente o centro. Cada cita se marca como hecha, «no vino» o anulada y tiene botón de
   recordatorio por WhatsApp con el mensaje escrito. Las revisiones de contratos de mantenimiento aparecen en su día.

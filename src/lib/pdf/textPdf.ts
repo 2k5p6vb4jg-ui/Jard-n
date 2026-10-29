@@ -1,5 +1,6 @@
 import "server-only";
 import { PDFDocument, type PDFFont, type PDFPage, StandardFonts, rgb } from "pdf-lib";
+import type { PdfSignature } from "../signatures";
 
 export interface TextSection {
   heading: string;
@@ -15,7 +16,14 @@ const DARK = rgb(0.06, 0.09, 0.16);
 const MUTED = rgb(0.4, 0.45, 0.53);
 
 /** Informe sencillo A4 (título, secciones con etiqueta/valor, pie y numeración). */
-export async function renderTextPdf(opts: { title: string; subtitle?: string; sections: TextSection[]; footer?: string }): Promise<Uint8Array> {
+export async function renderTextPdf(opts: {
+  title: string;
+  subtitle?: string;
+  sections: TextSection[];
+  footer?: string;
+  /** Firma al final (consentimiento firmado en la tablet) */
+  signature?: (PdfSignature & { label: string }) | null;
+}): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -97,6 +105,20 @@ export async function renderTextPdf(opts: { title: string; subtitle?: string; se
       y -= 3;
     }
     y -= 8;
+  }
+
+  if (opts.signature) {
+    const img = await pdf.embedPng(opts.signature.png).catch(() => null);
+    ensure(110);
+    y -= 4;
+    page.drawRectangle({ x: M, y: y - 80, width: 260, height: 94, borderColor: rgb(0.8, 0.83, 0.87), borderWidth: 0.6, borderDashArray: [3, 3] });
+    draw(safe(opts.signature.label), M + 8, 8, font, MUTED);
+    if (img) {
+      const sc = Math.min(244 / img.width, 54 / img.height);
+      page.drawImage(img, { x: M + 8, y: y - 66, width: img.width * sc, height: img.height * sc });
+    }
+    page.drawText(safe(opts.signature.caption), { x: M + 8, y: y - 76, size: 7, font, color: MUTED });
+    y -= 96;
   }
 
   const pages = pdf.getPages();

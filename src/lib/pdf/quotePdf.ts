@@ -4,6 +4,7 @@ import { formatEUR } from "../money";
 import { formatDate } from "../dates";
 import type { QuoteLine } from "../quotes";
 import { renderCommercialPdf } from "./commercialPdf";
+import type { PdfSignature } from "../signatures";
 
 export interface QuotePdfData {
   settings: Settings | null;
@@ -33,6 +34,7 @@ export interface QuotePdfData {
     underWarranty: boolean;
   };
   customer: { name: string; dni?: string | null; phone?: string | null; address?: string | null; email?: string | null };
+  signature?: PdfSignature | null;
 }
 
 /** Presupuesto de una orden de taller. */
@@ -83,5 +85,6 @@ export async function renderQuotePdf(data: QuotePdfData): Promise<Uint8Array> {
       },
     ],
     signatures: ["Conforme del cliente (firma y fecha)", `Por ${businessName}`],
+    signatureImages: [data.signature ?? null],
   });
 }

@@ -253,6 +253,7 @@ model Patient {
   orderItems OrderItem[]
 
   appointments Appointment[]
+  signatures   Signature[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -545,6 +546,7 @@ model WorkOrder {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   photos    Photo[]
+  signatures Signature[]
 
   @@index([status])
   @@index([patientId])
@@ -625,6 +627,7 @@ model Quote {
   linesJson  String
   pdfPath    String? // Copia del PDF en uploads/quotes/
   acceptedAt DateTime?
+  signature  Signature?
 
   createdAt DateTime @default(now())
 
@@ -836,6 +839,7 @@ model CenterProposal {
   products        TrackedProduct[]
   /// Calendario de revisiones (contratos de mantenimiento aceptados)
   visits          MaintenanceVisit[]
+  signature       Signature?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1116,4 +1120,38 @@ model User {
   lastLoginAt    DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+}
+
+// ── Firmas en la tablet ─────────────────────────────────────────────────────
+
+enum SignatureKind {
+  RECEIPT // Resguardo de entrada al taller
+  QUOTE // Presupuesto (conforme del cliente)
+  PROPOSAL // Propuesta a un centro
+  CONSENT // Consentimiento RGPD
+}
+
+/** Firma hecha con el dedo en la pantalla. Se guarda en la BD (PNG) y se borra con su documento. */
+model Signature {
+  id          String        @id @default(cuid())
+  kind        SignatureKind
+  image       Bytes // PNG con fondo transparente
+  signerName  String
+  signerDni   String?
+  text        String? // Texto aceptado, congelado (consentimiento)
+  collectedBy String? // Usuario que la recogió
+  ip          String?
+  signedAt    DateTime      @default(now())
+
+  workOrderId String?
+  workOrder   WorkOrder?      @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  quoteId     String?         @unique
+  quote       Quote?          @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  proposalId  String?         @unique
+  proposal    CenterProposal? @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  patientId   String?
+  patient     Patient?        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([workOrderId])
+  @@index([patientId])
 }

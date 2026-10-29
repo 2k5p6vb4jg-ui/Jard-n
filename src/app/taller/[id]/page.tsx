@@ -7,6 +7,7 @@ import {
   Ban,
   Building2,
   Camera,
+  CheckCircle2,
   Check,
   Clock,
   Download,
@@ -16,6 +17,7 @@ import {
   History,
   Package,
   Pencil,
+  PenLine,
   Play,
   Plus,
   Printer,
@@ -72,8 +74,9 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
         parts: { include: { category: true }, orderBy: { createdAt: "asc" } },
         timeEntries: { include: { technician: { select: { name: true } } }, orderBy: { startedAt: "desc" } },
         statusHistory: { orderBy: { changedAt: "asc" } },
-        quotes: { orderBy: { issuedAt: "desc" } },
+        quotes: { orderBy: { issuedAt: "desc" }, include: { signature: { select: { signerName: true, signedAt: true } } } },
         photos: { orderBy: { createdAt: "asc" } },
+        signatures: { where: { kind: "RECEIPT" }, select: { signerName: true, signedAt: true }, orderBy: { signedAt: "desc" }, take: 1 },
         orderItems: linkedItemsSelect,
       },
     }),
@@ -130,6 +133,14 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
             <a href={`/api/taller/${id}/resguardo`} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-5 font-medium text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 hover:ring-slate-400 lg:min-h-11 lg:px-4 lg:text-[15px]">
               <Printer className="size-5" /> Resguardo
             </a>
+            <LinkButton
+              href={`/firmar?tipo=resguardo&id=${id}`}
+              variant="secondary"
+              icon={order.signatures[0] ? CheckCircle2 : PenLine}
+              title={order.signatures[0] ? `Firmado por ${order.signatures[0].signerName} el ${formatDate(order.signatures[0].signedAt)}. Pulse para volver a firmar.` : "Firmar el resguardo en la tablet"}
+            >
+              {order.signatures[0] ? "Resguardo firmado" : "Firmar resguardo"}
+            </LinkButton>
             <LinkButton href={`/taller/${id}/editar`} variant="secondary" icon={Pencil}>Editar</LinkButton>
           </>
         }
@@ -444,6 +455,15 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
                         <Download className="size-4" /> Descargar
                       </a>
                     </div>
+                    {q.signature ? (
+                      <p className="flex items-center gap-1.5 text-sm text-emerald-700"><CheckCircle2 className="size-4" />Firmado por {q.signature.signerName} el {formatDate(q.signature.signedAt)}</p>
+                    ) : (
+                      st !== "REJECTED" && st !== "EXPIRED" && (
+                        <Link href={`/firmar?tipo=presupuesto&id=${q.id}`} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-3 text-sm font-medium text-teal-700 ring-1 ring-inset ring-teal-200 hover:bg-teal-50">
+                          <PenLine className="size-4" /> Firmar en la tablet
+                        </Link>
+                      )
+                    )}
                     {open && !closed && !hasAccepted && (
                       <div className="flex flex-wrap gap-2">
                         {st === "DRAFT" && quoteForm("SENT", "Entregado al cliente", "secondary", <Send className="size-4" />)}

@@ -3,6 +3,7 @@ import { audit } from "@/lib/audit";
 import { parseQuoteLines } from "@/lib/quotes";
 import { renderQuotePdf } from "@/lib/pdf/quotePdf";
 import { loadLogo } from "@/lib/branding";
+import { pdfSignature } from "@/lib/signatures";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 /** PDF del presupuesto, regenerado desde su instantánea (idéntico en cada descarga). */
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const quote = await prisma.quote.findUnique({ where: { id }, include: { workOrder: { include: { patient: true, equipmentCategory: { select: { label: true } }, serviceType: { select: { label: true } } } } } });
+  const quote = await prisma.quote.findUnique({ where: { id }, include: { signature: true, workOrder: { include: { patient: true, equipmentCategory: { select: { label: true } }, serviceType: { select: { label: true } } } } } });
   if (!quote) return new Response("Presupuesto no encontrado", { status: 404 });
   const settings = await prisma.settings.findUnique({ where: { id: 1 } });
   const o = quote.workOrder;
@@ -22,6 +23,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     settings,
     logo,
     quote: { ...quote, lines: parseQuoteLines(quote.linesJson) },
+    signature: pdfSignature(quote.signature),
     order: {
       code: o.code,
       equipment: [o.equipmentCategory.label, o.equipmentBrand, o.equipmentModel].filter(Boolean).join(" · "),

@@ -10,6 +10,7 @@ import { formatEUR } from "./money";
 import { deletePhotoFolder, resolveUploadPath, UPLOADS_ROOT } from "./storage";
 import { getStatusLabels } from "./workOrderOptions";
 import { renderTextPdf, type TextSection } from "./pdf/textPdf";
+import { SIGNATURE_KINDS } from "./signatures";
 import {
   compressionClass,
   correctionType,
@@ -41,6 +42,7 @@ export async function collectPatientData(patientId: string) {
       orderItems: { select: { description: true, quantity: true, status: true, createdAt: true, supplier: { select: { name: true } } } },
       products: { include: { category: true, interventions: { orderBy: { date: "asc" } } } },
       appointments: { include: { type: true }, orderBy: { startsAt: "asc" } },
+      signatures: { select: { id: true, kind: true, signerName: true, signerDni: true, signedAt: true, collectedBy: true, text: true }, orderBy: { signedAt: "asc" } },
     },
   });
 }
@@ -96,6 +98,10 @@ async function reportPdf(p: PatientData): Promise<Uint8Array> {
         ["Precio", o.priceCents != null ? `${formatEUR(o.priceCents)} (${o.paid ? "pagado" : "pendiente de pago"})` : ""],
         ["Observaciones", o.notes ?? ""],
       ]),
+    },
+    {
+      heading: "Firmas",
+      rows: p.signatures.map((g) => [`${SIGNATURE_KINDS[g.kind].label}`, `${formatDate(g.signedAt)} · ${g.signerName}${g.signerDni ? ` (${g.signerDni})` : ""} · imagen en la carpeta «firmas»`] as [string, string]),
     },
     {
       heading: "Citas",
@@ -162,6 +168,7 @@ export async function writePatientExport(patientId: string, output: Writable): P
       "- datos.json: los mismos datos en formato estructurado y reutilizable.",
       "- documentos/: estudios de pisada, fotos de huellas, recetas y demás archivos.",
       "- fotos/: fotos de sus reparaciones y plantillas.",
+      "- firmas/: firmas hechas en la tablet (consentimiento, resguardos, presupuestos).",
     ].join("\r\n"),
     { name: "LEEME.txt" },
   );
@@ -189,6 +196,11 @@ export async function writePatientExport(patientId: string, output: Writable): P
       }
     }
   }
+  // Firmas (imágenes PNG guardadas en la base de datos)
+  const sigs = await prisma.signature.findMany({ where: { patientId }, select: { id: true, kind: true, signedAt: true, image: true }, orderBy: { signedAt: "asc" } });
+  for (const [i, g] of sigs.entries()) {
+    archive.append(Buffer.from(g.image), { name: `firmas/${formatDate(g.signedAt).split("/").reverse().join("-")}_${slug(SIGNATURE_KINDS[g.kind].label)}-${i + 1}.png` });
+  }
   await archive.finalize();
   await done;
   return true;
@@ -206,6 +218,7 @@ export async function erasePatient(patientId: string) {
       id: true,
       documents: { select: { id: true } },
       insoleOrders: { select: { id: true } },
+      signatures: { select: { id: true } },
       _count: { select: { insoles: true, stockings: true, documents: true, workOrders: true, products: true, insoleOrders: true } },
     },
   });
@@ -225,11 +238,12 @@ export async function erasePatient(patientId: string) {
           { entity: "Patient", entityId: patientId },
           { entity: "ClinicalDocument", entityId: { in: docIds } },
           { entity: "InsoleOrder", entityId: { in: insoleOrderIds } },
+          { entity: "Signature", entityId: { in: patient.signatures.map((g) => g.id) } },
         ],
       },
       data: { summary: null },
     }),
-    prisma.patient.delete({ where: { id: patientId } }), // en cascada: prescripciones, plantillas, medias y documentos
+    prisma.patient.delete({ where: { id: patientId } }), // en cascada: prescripciones, plantillas, medias, documentos y firmas
   ]);
 
   // Fotos de sus plantillas (las filas se borran en cascada con la ficha)

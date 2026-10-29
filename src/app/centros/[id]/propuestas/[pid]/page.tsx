@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarCheck, ClipboardPlus, Download, Save, Eye, FileText, Package, Pencil, Send, StickyNote, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarCheck, CheckCircle2, PenLine, ClipboardPlus, Download, Save, Eye, FileText, Package, Pencil, Send, StickyNote, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/dates";
 import { formatEUR } from "@/lib/money";
@@ -23,6 +23,7 @@ export default async function ProposalPage({ params }: { params: Promise<{ id: s
   const p = await prisma.centerProposal.findFirst({
     where: { id: pid, centerId: id },
     include: {
+      signature: { select: { signerName: true, signedAt: true } },
       visits: { include: { workOrder: { select: { id: true, code: true, status: true } } }, orderBy: { dueAt: "asc" } },
       center: { select: { id: true, name: true } },
       products: { include: { category: { select: { label: true } } }, orderBy: { serialNumber: "asc" } } },
@@ -68,6 +69,16 @@ export default async function ProposalPage({ params }: { params: Promise<{ id: s
             <a href={`/api/propuestas/${p.id}?descargar=1`} className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-white px-5 font-medium text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 lg:min-h-11 lg:px-4 lg:text-[15px]">
               <Download className="size-5" /> Descargar
             </a>
+            {p.status !== "REJECTED" && (
+              <LinkButton
+                href={`/firmar?tipo=propuesta&id=${p.id}`}
+                variant="secondary"
+                icon={p.signature ? CheckCircle2 : PenLine}
+                title={p.signature ? `Firmada por ${p.signature.signerName} el ${formatDate(p.signature.signedAt)}` : "Firmar la propuesta en la tablet"}
+              >
+                {p.signature ? "Firmada" : "Firmar"}
+              </LinkButton>
+            )}
             {!decided && <LinkButton href={`/centros/${id}/propuestas/${p.id}/editar`} variant="secondary" icon={Pencil}>Editar</LinkButton>}
           </>
         }
